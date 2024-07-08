@@ -2,7 +2,6 @@
 from pybricks.parameters import Direction, Port
 from pybricks.pupdevices import Motor
 from usys import stdin, stdout
-from message import Message
 
 drive_settings = dict(profile=360)
 drive_limits = dict(acceleration=1000)
@@ -30,10 +29,6 @@ def percentage_to_speed(percentage):
     return percentage / 100 * max_speed
 
 
-def send_message(type, payload={}):
-    stdout.write(str(Message(type, payload)))
-
-
 try:
     while True:
         speeds = stdin.readline().strip().split(",")
@@ -41,10 +36,6 @@ try:
         for i, speed in enumerate(speeds):
             drive_motors[i].run(percentage_to_speed(int(speed)))
 
-except SystemExit as e:
-    send_message("debug", {"exception": "SystemExit"})
-    raise e
-
 except Exception as e:
-    send_message("debug", {"exception": "Exception", "message": str(e)})
+    stdout.write(str(e))
     raise e

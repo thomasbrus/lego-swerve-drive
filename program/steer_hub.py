@@ -2,7 +2,6 @@
 from pybricks.parameters import Direction, Port
 from pybricks.pupdevices import Motor
 from usys import stdin, stdout
-from message import Message
 
 steer_settings = dict(gears=[[20, 60]], profile=5, positive_direction=Direction.CLOCKWISE)
 steer_limits = dict(acceleration=4000)
@@ -48,10 +47,6 @@ def set_steering_angle(motor, target_angle, speed=percentage_to_speed(100), wait
     motor.run_angle(speed=speed, rotation_angle=angle_difference, wait=wait)
 
 
-def send_message(type, payload={}):
-    stdout.write(str(Message(type, payload)))
-
-
 setup_motors(steer_motors)
 
 
@@ -62,12 +57,8 @@ try:
         for i, angle in enumerate(angles):
             set_steering_angle(steer_motors[i], int(angle), speed=percentage_to_speed(100), wait=False)
 
-except SystemExit as e:
-    send_message("debug", {"exception": "SystemExit"})
-    raise e
-
 except Exception as e:
-    send_message("debug", {"exception": "Exception", "message": str(e)})
+    stdout.write(str(e))
     raise e
 
 finally:
