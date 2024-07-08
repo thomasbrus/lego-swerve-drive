@@ -1,4 +1,4 @@
-# Lego Swerve Drive
+# LEGO Swerve Drive
 
 ## Getting Started
 
@@ -7,4 +7,5 @@
 ```bash
 python3 -m pip install pipenv
 pip install pybricks pybricksdev
+yarn dev
 ```
