@@ -1,7 +1,5 @@
-import { Message } from "@/utils/message";
 import { useBluetooth } from "./use-bluetooth";
-import { JSONBuffer } from "@/utils/json-buffer";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { logIncomingHubMessage, logOutgoingHubMessage } from "@/utils/log-message";
 
 const pybricksServiceUUID = "c5f50001-8280-46da-89f4-6d8051e4aeef";
@@ -16,8 +14,6 @@ const WRITE_STDOUT_EVENT = "\x01";
 
 const USER_PROGRAM_RUNNING_STATUS_FLAG = 1 << 6;
 
-const jsonBuffer = new JSONBuffer();
-
 export interface Hub {
   isConnected: boolean;
   isConnecting: boolean;
@@ -29,13 +25,12 @@ export interface Hub {
     characteristic: BluetoothRemoteGATTCharacteristic;
   }>;
   disconnect: () => void;
-  sendCode: (source: string, opts?: { log: boolean }) => Promise<void>;
-  waitForMessage: (type: string) => Promise<Message>;
+  sendMessage: (message: string, opts?: { log: boolean }) => Promise<void>;
   startUserProgram: () => Promise<void>;
   stopUserProgram: () => Promise<void>;
 }
 
-export function useHub({ onMessage }: { onMessage: (message: Message) => void }) {
+export function useHub({ onMessage }: { onMessage: (message: string) => void }) {
   const {
     isConnecting,
     isConnected,
@@ -48,18 +43,13 @@ export function useHub({ onMessage }: { onMessage: (message: Message) => void })
 
   const [isUserProgramRunning, setIsUserProgramRunning] = useState(false);
 
-  useEffect(() => {
-    jsonBuffer.setCallback(handleJson);
-    return () => jsonBuffer.removeCallback();
-  }, [onMessage]);
-
   function handleMessage(data: string) {
     switch (data[0]) {
       case STATUS_REPORT_EVENT:
         handleStatusReport(data.slice(1));
         break;
       case WRITE_STDOUT_EVENT:
-        handleStdout(data.slice(1));
+        onMessage(data.slice(1));
         break;
     }
   }
@@ -73,10 +63,6 @@ export function useHub({ onMessage }: { onMessage: (message: Message) => void })
     }
   }
 
-  function handleStdout(data: string) {
-    jsonBuffer.feed(data);
-  }
-
   async function connect() {
     return connectBluetooth({
       primaryServiceId: pybricksServiceUUID,
@@ -84,33 +70,13 @@ export function useHub({ onMessage }: { onMessage: (message: Message) => void })
     });
   }
 
-  function handleJson(jsonString: string) {
-    const message = Message.parse(jsonString);
-    logIncomingHubMessage(message);
-    onMessage(message);
-  }
-
-  async function sendCode(source: string, opts = { log: true }) {
-    const message = new Message("sendCode", source);
-
+  async function sendMessage(message: string, opts = { log: true }) {
     if (opts.log) logOutgoingHubMessage(message);
 
-    await writeBluetooth(WRITE_STDIN_COMMAND + source + "\n");
-  }
-
-  async function waitForMessage(type: string) {
-    return new Promise<Message>((resolve) => {
-      const callback = (jsonString: string) => {
-        const message = Message.parse(jsonString);
-        if (message.type === type) resolve(message);
-      };
-
-      jsonBuffer.setOnceCallback(callback);
-    });
+    await writeBluetooth(WRITE_STDIN_COMMAND + message + "\n");
   }
 
   async function startUserProgram() {
-    jsonBuffer.clear();
     return await writeBluetooth(START_USER_PROGRAM_COMMAND);
   }
 
@@ -124,8 +90,7 @@ export function useHub({ onMessage }: { onMessage: (message: Message) => void })
     isUserProgramRunning,
     connect,
     disconnect: disconnectBluetooth,
-    sendCode,
-    waitForMessage,
+    sendMessage,
     startUserProgram,
     stopUserProgram,
   };
