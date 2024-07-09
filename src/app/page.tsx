@@ -26,14 +26,20 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { useGamepad, Gamepad, GamepadUpdate } from "@/hooks/use-gamepad";
+import { normalizeSwerveSpeed, swerveDrive } from "@/utils/swerve";
+import { Vector2 } from "@/utils/vector";
 
 export default function Home() {
+  const steerHub = useHub({ onMessage: () => {} });
+  const driveHub = useHub({ onMessage: () => {} });
+
   return (
     <Page title="Dashboard">
       <div className="grid gap-4 grid-cols-2">
-        <SteerHubCard />
-        <DriveHubCard />
-        <GamepadCard />
+        <SteerHubCard steerHub={steerHub} />
+        <DriveHubCard driveHub={driveHub} />
+        <GamepadCard steerHub={steerHub} driveHub={driveHub} />
       </div>
     </Page>
   );
@@ -64,9 +70,7 @@ function CardHeader({
   );
 }
 
-function SteerHubCard() {
-  const steerHub = useHub({ onMessage: () => {} });
-
+function SteerHubCard({ steerHub }: { steerHub: Hub }) {
   const fields = [
     { name: "frontLeftAngle", label: "Front Left Angle", defaultValue: 0 },
     { name: "frontRighAngle", label: "Front Right Angle", defaultValue: 0 },
@@ -94,9 +98,7 @@ function SteerHubCard() {
   );
 }
 
-function DriveHubCard() {
-  const driveHub = useHub({ onMessage: () => {} });
-
+function DriveHubCard({ driveHub }: { driveHub: Hub }) {
   const fields = [
     { name: "frontLeftSpeed", label: "Front Left Speed", defaultValue: 0 },
     { name: "frontRighSpeed", label: "Front Right Speed", defaultValue: 0 },
@@ -211,13 +213,60 @@ export function HubForm({
   );
 }
 
-function GamepadCard() {
+function GamepadCard({ steerHub, driveHub }: { steerHub: Hub; driveHub: Hub }) {
+  const gamepad = useGamepad({ fps: 60, onUpdate: handleUpdate });
+
+  function handleUpdate(gamepadUpdate: GamepadUpdate) {
+    const { x1, y1, x2, y2 } = gamepadUpdate;
+
+    const wheelPositions = [
+      new Vector2(1, 1), // Left front
+      new Vector2(-1, 1), // Right front
+      new Vector2(1, -1), // Left back
+      new Vector2(-1, -1), // Right back
+    ];
+
+    const swerveVectors = wheelPositions.map((wheelPosition) => swerveDrive(x1, y1, x2, wheelPosition.x, wheelPosition.y));
+    const swerveSpeeds = swerveVectors.map((vector) => Math.round(normalizeSwerveSpeed(new Vector2(vector.x, vector.y).length())));
+    const swerveAngles = swerveVectors.map((vector) => Math.round(new Vector2(vector.x, vector.y).angle()));
+
+    if (steerHub.isUserProgramRunning) steerHub.sendMessage(swerveAngles.join(","));
+    if (driveHub.isUserProgramRunning) driveHub.sendMessage(swerveSpeeds.join(","));
+  }
+
+  function formAxisValue(value: number) {
+    return `${Math.round(value)}%`;
+  }
+
   return (
     <Card>
-      <CardHeader title="Gamepad" />
-      <CardContent>...</CardContent>
+      <CardHeader title="Gamepad" badge={<GamepadBadge gamepad={gamepad} />} />
+      <CardContent>
+        <div className="grid gap-6 grid-cols-2 bg-muted/50 rounded-md p-4">
+          <div className="space-y-2">
+            <div className="tracking-tight text-sm font-medium">Left joystick x-axis</div>
+            <div className="text-2xl font-bold">{formAxisValue(gamepad.x1)}</div>
+          </div>
+          <div className="space-y-2">
+            <div className="tracking-tight text-sm font-medium">Left joystick y-axis</div>
+            <div className="text-2xl font-bold">{formAxisValue(gamepad.y1)}</div>
+          </div>
+          <div className="space-y-2">
+            <div className="tracking-tight text-sm font-medium">Right joystick x-axis</div>
+            <div className="text-2xl font-bold">{formAxisValue(gamepad.x2)}</div>
+          </div>
+          <div className="space-y-2">
+            <div className="tracking-tight text-sm font-medium">Right joystick y-axis</div>
+            <div className="text-2xl font-bold">{formAxisValue(gamepad.y2)}</div>
+          </div>
+        </div>
+      </CardContent>
     </Card>
   );
+}
+
+function GamepadBadge({ gamepad }: { gamepad: Gamepad }) {
+  return <Badge variant={gamepad.isConnected ? "default" : "outline"}>{gamepad.isConnected ? "Connected" : "Not connected"}</Badge>;
 }
 
 function MessagesCard({ hubs: { steerHub, driveHub } }: { hubs: { steerHub: Hub; driveHub: Hub } }) {

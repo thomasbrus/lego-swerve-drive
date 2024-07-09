@@ -1,4 +1,4 @@
-# $ pybricksdev run ble drive_hub.py --name "Technic Hub B" --no-wait
+# $ pybricksdev run ble drive_hub.py --name "Technic Hub C" --no-wait
 from pybricks.parameters import Direction, Port
 from pybricks.pupdevices import Motor
 from usys import stdin, stdout
@@ -35,6 +35,8 @@ try:
 
         for i, speed in enumerate(speeds):
             drive_motors[i].run(percentage_to_speed(int(speed)))
+
+        stdout.buffer.write(b"ack")
 
 except Exception as e:
     stdout.write(str(e))

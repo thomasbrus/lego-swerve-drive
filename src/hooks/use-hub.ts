@@ -1,5 +1,5 @@
 import { useBluetooth } from "./use-bluetooth";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { logIncomingHubMessage, logOutgoingHubMessage } from "@/utils/log-message";
 
 const pybricksServiceUUID = "c5f50001-8280-46da-89f4-6d8051e4aeef";
@@ -31,6 +31,8 @@ export interface Hub {
 }
 
 export function useHub({ onMessage }: { onMessage: (message: string) => void }) {
+  const readyRef = useRef(true);
+
   const {
     isConnecting,
     isConnected,
@@ -49,7 +51,10 @@ export function useHub({ onMessage }: { onMessage: (message: string) => void }) 
         handleStatusReport(data.slice(1));
         break;
       case WRITE_STDOUT_EVENT:
-        onMessage(data.slice(1));
+        const message = data.slice(1);
+        logIncomingHubMessage(message);
+        onMessage(message);
+        if (message === "ack") readyRef.current = true;
         break;
     }
   }
@@ -71,7 +76,14 @@ export function useHub({ onMessage }: { onMessage: (message: string) => void }) 
   }
 
   async function sendMessage(message: string, opts = { log: true }) {
+    if (!readyRef.current) {
+      console.info("Not ready to send message:", message);
+      return;
+    }
+
     if (opts.log) logOutgoingHubMessage(message);
+
+    readyRef.current = false;
 
     await writeBluetooth(WRITE_STDIN_COMMAND + message + "\n");
   }

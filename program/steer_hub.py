@@ -53,9 +53,10 @@ setup_motors(steer_motors)
 try:
     while True:
         angles = stdin.readline().strip().split(",")
-
         for i, angle in enumerate(angles):
             set_steering_angle(steer_motors[i], int(angle), speed=percentage_to_speed(100), wait=False)
+
+        stdout.buffer.write(b"ack")
 
 except Exception as e:
     stdout.write(str(e))

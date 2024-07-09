@@ -13,7 +13,7 @@ export class Vector2 {
     return Math.sqrt(this.x ** 2 + this.y ** 2);
   }
 
-  direction() {
+  angle() {
     return (radiansToDegrees(Math.PI - Math.atan2(this.y, this.x)) - 90 + 360) % 360;
   }
 }
