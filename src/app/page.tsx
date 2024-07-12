@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Hub, useHub } from "@/hooks/use-hub";
 import { Input } from "@/components/ui/input";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import {
   ColumnDef,
   ColumnFiltersState,
@@ -214,27 +214,42 @@ export function HubForm({
 }
 
 function GamepadCard({ steerHub, driveHub }: { steerHub: Hub; driveHub: Hub }) {
-  const gamepad = useGamepad({ fps: 60, onUpdate: handleUpdate });
+  const cachedHandleUpdate = useCallback(handleUpdate, [steerHub.isUserProgramRunning, driveHub.isUserProgramRunning]);
+  const gamepad = useGamepad({ fps: 60, onUpdate: cachedHandleUpdate });
 
   function handleUpdate(gamepadUpdate: GamepadUpdate) {
-    const { x1, y1, x2, y2 } = gamepadUpdate;
+    const { x1, y1, x2, y2: _ } = gamepadUpdate;
 
     const wheelPositions = [
       new Vector2(1, 1), // Left front
       new Vector2(-1, 1), // Right front
-      new Vector2(1, -1), // Left back
-      new Vector2(-1, -1), // Right back
+      new Vector2(1, -1), // Left rear
+      new Vector2(-1, -1), // Right rear
     ];
 
+    // TODO: public SwerveModuleState[] toSwerveModuleStates(
+    // ChassisSpeeds chassisSpeeds, Translation2d centerOfRotationMeters) {
     const swerveVectors = wheelPositions.map((wheelPosition) => swerveDrive(x1, y1, x2, wheelPosition.x, wheelPosition.y));
-    const swerveSpeeds = swerveVectors.map((vector) => Math.round(normalizeSwerveSpeed(new Vector2(vector.x, vector.y).length())));
-    const swerveAngles = swerveVectors.map((vector) => Math.round(new Vector2(vector.x, vector.y).angle()));
 
-    if (steerHub.isUserProgramRunning) steerHub.sendMessage(swerveAngles.join(","));
-    if (driveHub.isUserProgramRunning) driveHub.sendMessage(swerveSpeeds.join(","));
+    const swerveSpeeds = swerveVectors.map((vector) => {
+      const vector2 = new Vector2(vector.x, vector.y);
+      const speed = Math.sign(vector.y) * vector2.length();
+      // TODO: Use SwerveDriveKinematics.desaturateWheelSpeeds(swerveModuleStates, kMaxSpeed);
+      return Math.round(normalizeSwerveSpeed(speed));
+    });
+
+    const swerveAngles = swerveVectors.map((vector) => {
+      return Math.round(new Vector2(vector.x * Math.sign(vector.y), vector.y * Math.sign(vector.y)).angle());
+    });
+
+    const averageLength = swerveSpeeds.reduce((acc, speed) => acc + speed, 0) / swerveSpeeds.length;
+
+    // TODO: Pass speed_left, speed_right, angle_left, angle_right to front & rear hub
+    if (steerHub.isUserProgramRunning && Math.abs(averageLength) > 20) steerHub.sendMessage(swerveAngles.join(","));
+    if (driveHub.isUserProgramRunning) driveHub.sendMessage(Math.abs(averageLength) > 10 ? swerveSpeeds.join(",") : "0,0,0,0");
   }
 
-  function formAxisValue(value: number) {
+  function formatAxisValue(value: number) {
     return `${Math.round(value)}%`;
   }
 
@@ -245,19 +260,19 @@ function GamepadCard({ steerHub, driveHub }: { steerHub: Hub; driveHub: Hub }) {
         <div className="grid gap-6 grid-cols-2 bg-muted/50 rounded-md p-4">
           <div className="space-y-2">
             <div className="tracking-tight text-sm font-medium">Left joystick x-axis</div>
-            <div className="text-2xl font-bold">{formAxisValue(gamepad.x1)}</div>
+            <div className="text-2xl font-bold">{formatAxisValue(gamepad.x1)}</div>
           </div>
           <div className="space-y-2">
             <div className="tracking-tight text-sm font-medium">Left joystick y-axis</div>
-            <div className="text-2xl font-bold">{formAxisValue(gamepad.y1)}</div>
+            <div className="text-2xl font-bold">{formatAxisValue(gamepad.y1)}</div>
           </div>
           <div className="space-y-2">
             <div className="tracking-tight text-sm font-medium">Right joystick x-axis</div>
-            <div className="text-2xl font-bold">{formAxisValue(gamepad.x2)}</div>
+            <div className="text-2xl font-bold">{formatAxisValue(gamepad.x2)}</div>
           </div>
           <div className="space-y-2">
             <div className="tracking-tight text-sm font-medium">Right joystick y-axis</div>
-            <div className="text-2xl font-bold">{formAxisValue(gamepad.y2)}</div>
+            <div className="text-2xl font-bold">{formatAxisValue(gamepad.y2)}</div>
           </div>
         </div>
       </CardContent>
