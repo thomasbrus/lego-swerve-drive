@@ -27,19 +27,19 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useGamepad, Gamepad, GamepadUpdate } from "@/hooks/use-gamepad";
-import { normalizeSwerveSpeed, swerveDrive } from "@/utils/swerve";
-import { Vector2 } from "@/utils/vector";
+
+const DEADZONE = 15;
 
 export default function Home() {
-  const steerHub = useHub({ onMessage: () => {} });
-  const driveHub = useHub({ onMessage: () => {} });
+  const frontHub = useHub({ onMessage: () => {} });
+  const rearHub = useHub({ onMessage: () => {} });
 
   return (
     <Page title="Dashboard">
       <div className="grid gap-4 grid-cols-2">
-        <SteerHubCard steerHub={steerHub} />
-        <DriveHubCard driveHub={driveHub} />
-        <GamepadCard steerHub={steerHub} driveHub={driveHub} />
+        <FrontHubCard frontHub={frontHub} />
+        <RearHub rearHub={rearHub} />
+        <GamepadCard frontHub={frontHub} rearHub={rearHub} />
       </div>
     </Page>
   );
@@ -70,57 +70,55 @@ function CardHeader({
   );
 }
 
-function SteerHubCard({ steerHub }: { steerHub: Hub }) {
+function FrontHubCard({ frontHub }: { frontHub: Hub }) {
   const fields = [
-    { name: "frontLeftAngle", label: "Front Left Angle", defaultValue: 0 },
-    { name: "frontRighAngle", label: "Front Right Angle", defaultValue: 0 },
-    { name: "rearLeftAngle", label: "Rear Left Angle", defaultValue: 0 },
-    { name: "rearRightAngle", label: "Rear Right Angle", defaultValue: 0 },
+    { name: "vx", label: "Velocity x-axis", defaultValue: 0 },
+    { name: "vy", label: "Velocity y-axis", defaultValue: 0 },
+    { name: "omega", label: "Angular velocity", defaultValue: 0 },
   ];
 
   function handleSubmit(data: any) {
-    const { frontLeftAngle, frontRighAngle, rearLeftAngle, rearRightAngle } = data;
-    steerHub.sendMessage([frontLeftAngle, frontRighAngle, rearLeftAngle, rearRightAngle].join(","));
+    const { vx, vy, omega } = data;
+    frontHub.sendMessage([vx, vy, omega].join(","));
   }
 
   return (
     <Card>
       <CardHeader
-        title="Steer Hub"
-        badge={<HubBadge hub={steerHub} />}
-        description="The hub that controls the swerve drive wheel angles."
-        actions={<HubActions hub={steerHub} />}
+        title="Front Hub"
+        badge={<HubBadge hub={frontHub} />}
+        description="The hub that controls the front left and right swerve modules."
+        actions={<HubActions hub={frontHub} />}
       />
       <CardContent>
-        <HubForm hub={steerHub} fields={fields} onSubmit={handleSubmit} />
+        <HubForm hub={frontHub} fields={fields} onSubmit={handleSubmit} />
       </CardContent>
     </Card>
   );
 }
 
-function DriveHubCard({ driveHub }: { driveHub: Hub }) {
+function RearHub({ rearHub }: { rearHub: Hub }) {
   const fields = [
-    { name: "frontLeftSpeed", label: "Front Left Speed", defaultValue: 0 },
-    { name: "frontRighSpeed", label: "Front Right Speed", defaultValue: 0 },
-    { name: "rearLeftSpeed", label: "Rear Left Speed", defaultValue: 0 },
-    { name: "rearRightSpeed", label: "Rear Right Speed", defaultValue: 0 },
+    { name: "vx", label: "Velocity x-axis", defaultValue: 0 },
+    { name: "vy", label: "Velocity y-axis", defaultValue: 0 },
+    { name: "omega", label: "Angular velocity", defaultValue: 0 },
   ];
 
   function handleSubmit(data: any) {
-    const { frontLeftSpeed, frontRighSpeed, rearLeftSpeed, rearRightSpeed } = data;
-    driveHub.sendMessage([frontLeftSpeed, frontRighSpeed, rearLeftSpeed, rearRightSpeed].join(","));
+    const { vx, vy, omega } = data;
+    rearHub.sendMessage([vx, vy, omega].join(","));
   }
 
   return (
     <Card>
       <CardHeader
-        title="Drive Hub"
-        badge={<HubBadge hub={driveHub} />}
-        description="The hub that controls the swerve drive wheel speeds."
-        actions={<HubActions hub={driveHub} />}
+        title="Rear Hub"
+        badge={<HubBadge hub={rearHub} />}
+        description="The hub that controls the rear left and right swerve modules."
+        actions={<HubActions hub={rearHub} />}
       />
       <CardContent>
-        <HubForm hub={driveHub} fields={fields} onSubmit={handleSubmit} />
+        <HubForm hub={rearHub} fields={fields} onSubmit={handleSubmit} />
       </CardContent>
     </Card>
   );
@@ -213,40 +211,19 @@ export function HubForm({
   );
 }
 
-function GamepadCard({ steerHub, driveHub }: { steerHub: Hub; driveHub: Hub }) {
-  const cachedHandleUpdate = useCallback(handleUpdate, [steerHub.isUserProgramRunning, driveHub.isUserProgramRunning]);
+function GamepadCard({ frontHub, rearHub }: { frontHub: Hub; rearHub: Hub }) {
+  const cachedHandleUpdate = useCallback(handleUpdate, [frontHub.isUserProgramRunning, rearHub.isUserProgramRunning]);
   const gamepad = useGamepad({ fps: 60, onUpdate: cachedHandleUpdate });
 
   function handleUpdate(gamepadUpdate: GamepadUpdate) {
-    const { x1, y1, x2, y2: _ } = gamepadUpdate;
+    let { x1, y1, x2, y2: _ } = gamepadUpdate;
 
-    const wheelPositions = [
-      new Vector2(1, 1), // Left front
-      new Vector2(-1, 1), // Right front
-      new Vector2(1, -1), // Left rear
-      new Vector2(-1, -1), // Right rear
-    ];
+    if (Math.abs(x1) < DEADZONE) x1 = 0;
+    if (Math.abs(y1) < DEADZONE) y1 = 0;
+    if (Math.abs(x2) < DEADZONE) x2 = 0;
 
-    // TODO: public SwerveModuleState[] toSwerveModuleStates(
-    // ChassisSpeeds chassisSpeeds, Translation2d centerOfRotationMeters) {
-    const swerveVectors = wheelPositions.map((wheelPosition) => swerveDrive(x1, y1, x2, wheelPosition.x, wheelPosition.y));
-
-    const swerveSpeeds = swerveVectors.map((vector) => {
-      const vector2 = new Vector2(vector.x, vector.y);
-      const speed = Math.sign(vector.y) * vector2.length();
-      // TODO: Use SwerveDriveKinematics.desaturateWheelSpeeds(swerveModuleStates, kMaxSpeed);
-      return Math.round(normalizeSwerveSpeed(speed));
-    });
-
-    const swerveAngles = swerveVectors.map((vector) => {
-      return Math.round(new Vector2(vector.x * Math.sign(vector.y), vector.y * Math.sign(vector.y)).angle());
-    });
-
-    const averageLength = swerveSpeeds.reduce((acc, speed) => acc + speed, 0) / swerveSpeeds.length;
-
-    // TODO: Pass speed_left, speed_right, angle_left, angle_right to front & rear hub
-    if (steerHub.isUserProgramRunning && Math.abs(averageLength) > 20) steerHub.sendMessage(swerveAngles.join(","));
-    if (driveHub.isUserProgramRunning) driveHub.sendMessage(Math.abs(averageLength) > 10 ? swerveSpeeds.join(",") : "0,0,0,0");
+    if (frontHub.isUserProgramRunning) frontHub.sendMessage([x1, y1, x2].join(","));
+    if (rearHub.isUserProgramRunning) rearHub.sendMessage([x1, y1, x2].join(","));
   }
 
   function formatAxisValue(value: number) {
@@ -284,13 +261,13 @@ function GamepadBadge({ gamepad }: { gamepad: Gamepad }) {
   return <Badge variant={gamepad.isConnected ? "default" : "outline"}>{gamepad.isConnected ? "Connected" : "Not connected"}</Badge>;
 }
 
-function MessagesCard({ hubs: { steerHub, driveHub } }: { hubs: { steerHub: Hub; driveHub: Hub } }) {
+function MessagesCard({ hubs: { frontHub, rearHub } }: { hubs: { frontHub: Hub; rearHub: Hub } }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [message, setMessage] = useState("");
   const [tabsValue, setTabsValue] = useState<string>("steer");
 
   function handleSendMessage(message: string) {
-    const hubs = { steer: steerHub, drive: driveHub };
+    const hubs = { steer: frontHub, drive: rearHub };
     hubs[tabsValue as "steer" | "drive"].sendMessage(message);
     setMessages([...messages, { id: "1", timestamp: Date.now(), source: tabsValue, content: message }]);
     setMessage("");
@@ -318,8 +295,8 @@ function MessagesCard({ hubs: { steerHub, driveHub } }: { hubs: { steerHub: Hub;
       <CardContent>
         <Tabs value={tabsValue} onValueChange={setTabsValue}>
           <TabsList className="grid w-full grid-cols-2 mt-2 mb-6">
-            <TabsTrigger value="steer">Steer Hub</TabsTrigger>
-            <TabsTrigger value="drive">Drive Hub</TabsTrigger>
+            <TabsTrigger value="steer">Front Hub</TabsTrigger>
+            <TabsTrigger value="drive">Rear Hub</TabsTrigger>
           </TabsList>
           <MessagesCardTabsContent value="steer" />
           <MessagesCardTabsContent value="drive" />

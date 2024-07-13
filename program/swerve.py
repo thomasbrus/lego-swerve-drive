@@ -23,6 +23,7 @@ class SwerveDriveMotor(Motor):
 
 
 class SwerveModuleState:
+    DEADZONE = 15
     MAX_SPEED = 390 / 360 * 1000
 
     def __init__(self, speed: float, angle: float) -> None:
@@ -31,6 +32,9 @@ class SwerveModuleState:
 
     @classmethod
     def optimized(cls, desired_state, current_angle):
+        if desired_state.speed < cls.DEADZONE:
+            return SwerveModuleState(speed=0, angle=current_angle)
+
         angle_difference = desired_state.angle - current_angle
 
         # Adjust the angle difference to be within the range [-180, 180] degrees.
@@ -60,7 +64,7 @@ class SwerveModule:
 
     def set_desired_state(self, desired_state: SwerveModuleState, wait=False) -> None:
         optimized_state = SwerveModuleState.optimized(desired_state, self.turning_motor.angle())
-        turning_speed = percentage_to_speed(desired_state.speed / 4)
+        turning_speed = percentage_to_speed(desired_state.speed)
         self.drive_motor.run(percentage_to_speed(optimized_state.speed))
         self.turning_motor.run_target(target_angle=optimized_state.angle, speed=turning_speed, wait=wait)
 

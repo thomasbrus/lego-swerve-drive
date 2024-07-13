@@ -77,7 +77,6 @@ export function useHub({ onMessage }: { onMessage: (message: string) => void }) 
 
   async function sendMessage(message: string, opts = { log: true }) {
     if (!readyRef.current) {
-      console.info("Not ready to send message:", message);
       return;
     }
 
