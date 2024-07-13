@@ -1,7 +1,8 @@
 from pybricks.pupdevices import Motor
-from pybricks.parameters import Direction, Port
+from pybricks.parameters import Port
 from umath import cos
-from utils import percentage_to_speed, degrees_to_radians
+from utils import percentage_to_speed, degrees_to_radians, vector_distance, vector_angle
+from pybricks.tools import vector, cross
 
 
 class SwerveTurningMotor(Motor):
@@ -56,3 +57,42 @@ class SwerveModule:
     def terminate(self):
         terminal_state = SwerveModuleState(speed=0, angle=0)
         self.set_desired_state(terminal_state, wait=True)
+
+
+class SwerveDriveKinematics:
+    def __init__(self, swerve_module_positions) -> None:
+        self.swerve_module_positions = swerve_module_positions
+
+    def to_swerve_module_states(self, drive_base_velocity, drive_base_center) -> list:
+        vx, vy, omega = drive_base_velocity
+        cx, cy = drive_base_center
+        velocity_vector = vector(vx, vy, omega)
+        omega_vector = vector(0, 0, omega)
+
+        module_states = []
+
+        for rx, ry in self.swerve_module_positions:
+            dx = rx - cx
+            dy = ry - cy
+
+            position_vector = vector(dx, dy, omega)
+
+            swerve_vector = velocity_vector + cross(omega_vector, position_vector)
+
+            speed = vector_distance(swerve_vector)
+            angle = vector_angle(swerve_vector)
+
+            module_states.append(SwerveModuleState(speed=speed, angle=angle))
+
+        return module_states
+
+    @classmethod
+    def normalize_wheel_speeds(cls, moduleStates, attainable_max_speed=100):
+        real_max_speed = 0
+
+        for module_state in moduleStates:
+            real_max_speed = max(real_max_speed, module_state.speed)
+
+        if real_max_speed > attainable_max_speed:
+            for module_state in moduleStates:
+                module_state.speed = module_state.speed / real_max_speed * attainable_max_speed
