@@ -49,14 +49,12 @@ class SwerveModuleState:
 
         optimized_speed = desired_state.speed
 
-        # Determine the rotation direction and speed.
         if abs(angle_difference) > 90:
             # Rotate in the opposite direction if the shortest path is more than 90 degrees.
             angle_difference = angle_difference - 180 if angle_difference > 0 else angle_difference + 180
             optimized_speed = -desired_state.speed
 
         optimized_angle = current_angle + angle_difference
-        optimized_speed = optimized_speed * cos(radians(optimized_angle - current_angle))
 
         return SwerveModuleState(speed=optimized_speed, angle=optimized_angle)
 
@@ -66,12 +64,26 @@ class SwerveModule:
         self.drive_motor = drive_motor
         self.turning_motor = turning_motor
 
-    def set_desired_state(self, desired_state: SwerveModuleState, wait=False) -> None:
-        current_angle = self.turning_motor.angle()
-        optimized_state = SwerveModuleState.optimized(desired_state, current_angle=current_angle)
-        turning_speed = percentage_to_speed(desired_state.speed)
-        self.drive_motor.run(percentage_to_speed(optimized_state.speed))
-        self.turning_motor.run_target(target_angle=optimized_state.angle, speed=turning_speed, wait=wait)
+    @classmethod
+    def set_desired_states(cls, swerve_modules, desired_states, wait=False):
+        optimized_modules = []
+
+        for swerve_module, desired_state in zip(swerve_modules, desired_states):
+            current_angle = swerve_module.turning_motor.angle()
+            optimized_state = SwerveModuleState.optimized(desired_state, current_angle=current_angle)
+            optimized_modules.append((swerve_module, desired_state, optimized_state))
+
+        max_angle_difference = 0
+
+        for swerve_module, desired_state, optimized_state in optimized_modules:
+            max_angle_difference = max(max_angle_difference, abs(optimized_state.angle - swerve_module.turning_motor.angle()))
+
+        for swerve_module, desired_state, optimized_state in optimized_modules:
+            turning_speed = percentage_to_speed(desired_state.speed)
+            # Driving speed is scaled down exponentially with the max angle difference of both modules.
+            optimized_state.speed *= cos(radians(optimized_state.angle - swerve_module.turning_motor.angle())) ** 3
+            swerve_module.drive_motor.run(percentage_to_speed(optimized_state.speed))
+            swerve_module.turning_motor.run_target(target_angle=optimized_state.angle, speed=turning_speed, wait=wait)
 
     def terminate(self):
         self.drive_motor.stop()

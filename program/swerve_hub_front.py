@@ -18,8 +18,7 @@ right_swerve_module = SwerveModule(right_drive_motor, right_turning_motor)
 
 
 def apply_swerve_module_states(module_states):
-    left_swerve_module.set_desired_state(module_states[2], wait=False)
-    right_swerve_module.set_desired_state(module_states[3], wait=False)
+    SwerveModule.set_desired_states([left_swerve_module, right_swerve_module], [module_states[2], module_states[3]], wait=False)
 
 
 try:
