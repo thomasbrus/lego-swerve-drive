@@ -20,6 +20,10 @@ class SwerveDriveMotor(Motor):
 
         drive_limits = dict(acceleration=1000)
         self.control.limits(**drive_limits)
+        self.positive_direction = positive_direction
+
+    def is_clockwise(self):
+        return self.positive_direction == Direction.CLOCKWISE
 
 
 class SwerveModuleState:
@@ -63,9 +67,10 @@ class SwerveModule:
         self.turning_motor = turning_motor
 
     def set_desired_state(self, desired_state: SwerveModuleState, wait=False) -> None:
-        optimized_state = SwerveModuleState.optimized(desired_state, self.turning_motor.angle())
+        current_angle = self.turning_motor.angle()
+        optimized_state = SwerveModuleState.optimized(desired_state, current_angle=current_angle)
         turning_speed = percentage_to_speed(desired_state.speed)
-        self.drive_motor.run(percentage_to_speed(optimized_state.speed) - self.turning_motor.speed())
+        self.drive_motor.run(percentage_to_speed(optimized_state.speed))
         self.turning_motor.run_target(target_angle=optimized_state.angle, speed=turning_speed, wait=wait)
 
     def terminate(self):

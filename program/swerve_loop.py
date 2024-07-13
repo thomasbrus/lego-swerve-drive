@@ -8,48 +8,25 @@ DEBUG = False
 input_readings = [
     "0,100,0\n",
     "0,100,0\n",
-    "0,-100,0\n",
-    "0,-100,0\n",
     "100,0,0\n",
     "100,0,0\n",
-    "-100,0,0\n",
-    "-100,0,0\n",
-    # "0,50,0\n",
-    # "0,50,0\n",
-    # "50,0,0\n",
-    # "50,0,0\n",
-    # "0,50,0\n",
-    # "0,50,0\n",
-    # "0,100,0\n",
-    # "0,-50,0\n",
-    # "0,-50,0\n",
-    # "0,-50,0\n",
-    # "50,50,0\n",
-    # "50,50,0\n",
-    # "-50,-50,0\n",
-    # "-50,-50,0\n",
-    # "0,15,0\n",
-    # "0,15,0\n",
-    # "0,15,0\n",
-    # "0,15,0\n",
-    # "0,0,25\n",
-    # "0,0,25\n",
-    # "0,0,25\n",
-    # "0,0,25\n",
-    # "0,0,-25\n",
-    # "0,0,-25\n",
-    # "0,0,-25\n",
-    # "0,0,-25\n",
-    # "50,0,50\n",
+    "0,100,0\n",
+    "0,100,0\n",
+    "100,0,0\n",
+    "100,0,0\n",
+    "0,100,0\n",
+    "0,100,0\n",
+    "100,0,0\n",
+    "100,0,0\n",
 ]
 simulated_io = SimulatedIO(input_readings=input_readings)
 stdin = simulated_io if DEBUG else stdin
 
 # Left front, right front, left rear, right rear
-kinematics = SwerveDriveKinematics(swerve_module_positions=[(-1, 1), (1, 1), (-1, -1), (1, -1)])
+kinematics = SwerveDriveKinematics(swerve_module_positions=[(1, 1), (-1, 1), (1, -1), (-1, -1)])
 
 
-def swerve_loop(hub, callback=lambda *args: None):
+def swerve_loop(hub, field_oriented=False, callback=lambda *args: None):
     try:
         while True:
             line = stdin.readline()
@@ -59,8 +36,7 @@ def swerve_loop(hub, callback=lambda *args: None):
 
             vx, vy, omega = [float(value) for value in line.strip().split(",")]
 
-            # drive_base_velocity = (vx, vy, omega - hub.imu.heading())
-            drive_base_velocity = (vx, vy, omega)
+            drive_base_velocity = (vx, vy, omega - hub.imu.heading() if field_oriented else omega)
             module_states = kinematics.to_swerve_module_states(drive_base_velocity=drive_base_velocity, drive_base_center=(0, 0))
 
             SwerveDriveKinematics.normalize_module_states(module_states)
