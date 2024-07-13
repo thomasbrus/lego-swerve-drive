@@ -222,6 +222,11 @@ function GamepadCard({ frontHub, rearHub }: { frontHub: Hub; rearHub: Hub }) {
     if (Math.abs(y1) < DEADZONE) y1 = 0;
     if (Math.abs(x2) < DEADZONE) x2 = 0;
 
+    // Scale it down a bit
+    x2 *= 100 / Math.sqrt(Math.pow(100, 2) + Math.pow(100, 2));
+
+    console.log({ x1, y1, x2 });
+
     if (frontHub.isUserProgramRunning) frontHub.sendMessage([x1, y1, x2].join(","));
     if (rearHub.isUserProgramRunning) rearHub.sendMessage([x1, y1, x2].join(","));
   }
