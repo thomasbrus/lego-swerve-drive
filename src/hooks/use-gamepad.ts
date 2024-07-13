@@ -55,9 +55,9 @@ export function useGamepad({ fps = 60, onUpdate }: { fps: number; onUpdate: (gam
     if (!gamepad) return;
 
     const x1 = gamepad.axes[0] * 100;
-    const y1 = gamepad.axes[1] * 100;
+    const y1 = -gamepad.axes[1] * 100;
     const x2 = gamepad.axes[2] * 100;
-    const y2 = gamepad.axes[3] * 100;
+    const y2 = -gamepad.axes[3] * 100;
 
     setX1(x1);
     setY1(y1);

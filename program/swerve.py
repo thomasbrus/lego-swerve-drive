@@ -65,7 +65,7 @@ class SwerveModule:
     def set_desired_state(self, desired_state: SwerveModuleState, wait=False) -> None:
         optimized_state = SwerveModuleState.optimized(desired_state, self.turning_motor.angle())
         turning_speed = percentage_to_speed(desired_state.speed)
-        self.drive_motor.run(percentage_to_speed(optimized_state.speed))
+        self.drive_motor.run(percentage_to_speed(optimized_state.speed) - self.turning_motor.speed())
         self.turning_motor.run_target(target_angle=optimized_state.angle, speed=turning_speed, wait=wait)
 
     def terminate(self):
