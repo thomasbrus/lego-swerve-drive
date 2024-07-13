@@ -1,23 +1,22 @@
 from pybricks.pupdevices import Motor
-from pybricks.parameters import Port
-from umath import cos
-from utils import percentage_to_speed, degrees_to_radians, vector_distance, vector_angle
+from pybricks.parameters import Port, Direction
+from umath import cos, radians
+from utils import percentage_to_speed, vector_distance, vector_angle
 from pybricks.tools import vector, cross
 
 
 class SwerveTurningMotor(Motor):
-    def __init__(self, port: Port, **kwargs) -> None:
-        turning_settings = dict(gears=[[20, 60]], profile=5)
-        super().__init__(port, **turning_settings, **kwargs)
+    def __init__(self, port: Port, positive_direction=Direction.CLOCKWISE) -> None:
+        super().__init__(port, positive_direction, [[20, 60]], True, 5)
 
-        turning_limits = dict(acceleration=4000)
+        turning_limits = dict(acceleration=2000)
         self.control.limits(**turning_limits)
+        self.reset_angle(self.angle())
 
 
 class SwerveDriveMotor(Motor):
-    def __init__(self, port: Port, **kwargs) -> None:
-        drive_settings = dict(profile=360)
-        super().__init__(port, **drive_settings, **kwargs)
+    def __init__(self, port: Port, positive_direction=Direction.CLOCKWISE) -> None:
+        super().__init__(port, positive_direction, None, True, 360)
 
         drive_limits = dict(acceleration=1000)
         self.control.limits(**drive_limits)
@@ -31,11 +30,25 @@ class SwerveModuleState:
         self.angle = angle
 
     @classmethod
-    def optimize(cls, desired_state, current_angle):
-        delta = desired_state.angle - current_angle
-        optimized_angle = desired_state.angle + 180 if abs(delta) > 90 else desired_state.angle
-        optimized_speed = -optimized_speed if abs(delta) > 90 else optimized_speed
-        optimized_speed = desired_state.speed * cos(degrees_to_radians(optimized_angle - current_angle))
+    def optimized(cls, desired_state, current_angle):
+        angle_difference = desired_state.angle - current_angle
+
+        # Adjust the angle difference to be within the range [-180, 180] degrees.
+        if angle_difference > 180:
+            angle_difference -= 360
+        elif angle_difference < -180:
+            angle_difference += 360
+
+        optimized_speed = desired_state.speed
+
+        # Determine the rotation direction and speed.
+        if abs(angle_difference) > 90:
+            # Rotate in the opposite direction if the shortest path is more than 90 degrees.
+            angle_difference = angle_difference - 180 if angle_difference > 0 else angle_difference + 180
+            optimized_speed = -desired_state.speed
+
+        optimized_angle = current_angle + angle_difference
+        optimized_speed = optimized_speed * cos(radians(optimized_angle - current_angle))
 
         return SwerveModuleState(speed=optimized_speed, angle=optimized_angle)
 
@@ -44,19 +57,16 @@ class SwerveModule:
     def __init__(self, drive_motor: Motor, turning_motor: Motor) -> None:
         self.drive_motor = drive_motor
         self.turning_motor = turning_motor
-        self.turning_motor.reset_angle(self.turning_motor.angle())
 
     def set_desired_state(self, desired_state: SwerveModuleState, wait=False) -> None:
-        turning_motor_angle = self.turning_motor.angle()
-        optimized_state = SwerveModuleState.optimize(desired_state, self.turning_motor.angle())
-        drive_speed = optimized_state.speed * cos(degrees_to_radians(optimized_state.angle - turning_motor_angle))
-
-        self.drive_motor.run(percentage_to_speed(drive_speed))
-        self.turning_motor.run_target(rotation_angle=optimized_state.angle, speed=percentage_to_speed(100), wait=wait)
+        optimized_state = SwerveModuleState.optimized(desired_state, self.turning_motor.angle())
+        turning_speed = percentage_to_speed(desired_state.speed / 4)
+        self.drive_motor.run(percentage_to_speed(optimized_state.speed))
+        self.turning_motor.run_target(target_angle=optimized_state.angle, speed=turning_speed, wait=wait)
 
     def terminate(self):
-        terminal_state = SwerveModuleState(speed=0, angle=0)
-        self.set_desired_state(terminal_state, wait=True)
+        self.drive_motor.stop()
+        self.turning_motor.run_target(target_angle=0, speed=percentage_to_speed(100), wait=True)
 
 
 class SwerveDriveKinematics:
@@ -87,7 +97,7 @@ class SwerveDriveKinematics:
         return module_states
 
     @classmethod
-    def normalize_wheel_speeds(cls, moduleStates, attainable_max_speed=100):
+    def normalize_module_states(cls, moduleStates, attainable_max_speed=100):
         real_max_speed = 0
 
         for module_state in moduleStates:

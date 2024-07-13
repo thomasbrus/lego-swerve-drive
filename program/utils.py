@@ -1,12 +1,4 @@
-from umath import pi, atan2
-
-
-def radians_to_degrees(radians):
-    return radians * 180 / pi
-
-
-def degrees_to_radians(degrees):
-    return degrees * pi / 180
+from umath import pi, atan2, degrees
 
 
 def percentage_to_speed(percentage):
@@ -15,7 +7,7 @@ def percentage_to_speed(percentage):
 
 
 def vector_angle(vector):
-    angle = radians_to_degrees(pi - atan2(vector[1], vector[0])) - 90
+    angle = degrees(pi - atan2(vector[1], vector[0])) - 90
     return (angle + 360) % 360
 
 
