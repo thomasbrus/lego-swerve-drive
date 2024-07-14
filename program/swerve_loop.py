@@ -27,7 +27,9 @@ stdin = simulated_io if DEBUG else stdin
 kinematics = SwerveDriveKinematics(swerve_module_positions=[(1, 1), (-1, 1), (1, -1), (-1, -1)])
 
 
-def swerve_loop(hub, field_relative=False, callback=lambda _module_states: None):
+def swerve_loop(hub, field_centric=False, callback=lambda _module_states: None):
+    drive_base_center = (0, 0)
+
     try:
         while True:
             line = stdin.readline()
@@ -35,24 +37,36 @@ def swerve_loop(hub, field_relative=False, callback=lambda _module_states: None)
             if not line:
                 break
 
-            vx, vy, omega = [float(value) for value in line.strip().split(",")]
+            cmd, *args = line.strip().split(",")
 
-            if field_relative:
-                angle = hub.imu.heading()
-                vx = vx * cos(radians(angle)) - vy * sin(radians(angle))
-                vy = vx * sin(radians(angle)) + vy * cos(radians(angle))
+            if cmd == "exit":
+                break
+            elif cmd == "set_drive_base_center":
+                dx, dy = [int(arg) for arg in args]
+                drive_base_center = (max(-1, min(1, drive_base_center[0] + dx / 100)), max(-1, min(1, drive_base_center[1] + dy / 100)))
+            elif cmd == "toggle_field_centric":
+                field_centric = not field_centric
+            elif cmd == "drive":
+                vx, vy, omega = [float(arg) for arg in args]
 
-            drive_base_velocity = (vx, vy, omega)
-            module_states = kinematics.to_swerve_module_states(drive_base_velocity=drive_base_velocity, drive_base_center=(0, 0))
+                if field_centric:
+                    angle = hub.imu.heading()
+                    vx = vx * cos(radians(angle)) - vy * sin(radians(angle))
+                    vy = vx * sin(radians(angle)) + vy * cos(radians(angle))
 
-            SwerveDriveKinematics.normalize_module_states(module_states)
+                drive_base_velocity = (vx, vy, omega)
+                module_states = kinematics.to_swerve_module_states(
+                    drive_base_velocity=drive_base_velocity, drive_base_center=drive_base_center
+                )
 
-            callback(module_states)
+                SwerveDriveKinematics.normalize_module_states(module_states)
 
-            if DEBUG:
-                wait(1000)
+                callback(module_states)
 
-            stdout.buffer.write(b"ack")
+                if DEBUG:
+                    wait(1000)
+
+                stdout.buffer.write(b"ack")
 
     except Exception as e:
         stdout.write(str(e))

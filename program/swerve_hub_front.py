@@ -22,7 +22,7 @@ def apply_swerve_module_states(module_states):
 
 
 try:
-    swerve_loop(hub, callback=apply_swerve_module_states)
+    swerve_loop(hub, field_centric=True, callback=apply_swerve_module_states)
 finally:
     left_swerve_module.terminate()
     right_swerve_module.terminate()

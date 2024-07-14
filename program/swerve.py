@@ -107,7 +107,6 @@ class SwerveDriveKinematics:
             dy = ry - cy
 
             position_vector = vector(dx, dy, omega)
-
             swerve_vector = velocity_vector + cross(omega_vector, position_vector)
 
             speed = vector_distance(swerve_vector)
