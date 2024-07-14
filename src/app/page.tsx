@@ -12,8 +12,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useGamepad, Gamepad, GamepadUpdate } from "@/hooks/use-gamepad";
-
-const DEADZONE = 15;
+import Image from "next/image";
 
 export default function Home() {
   const frontHub = useHub({ onMessage: () => {} });
@@ -21,7 +20,7 @@ export default function Home() {
 
   return (
     <Page title="Dashboard">
-      <div className="grid gap-4 grid-cols-2">
+      <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
         <FrontHubCard frontHub={frontHub} />
         <RearHub rearHub={rearHub} />
         <GamepadCard frontHub={frontHub} rearHub={rearHub} />
@@ -219,31 +218,60 @@ function GamepadCard({ frontHub, rearHub }: { frontHub: Hub; rearHub: Hub }) {
     <Card>
       <CardHeader
         title="Gamepad"
-        description="Connect any controller via Bluetooth."
+        description="Connect controller via Bluetooth, press calibrate to center."
         badge={<GamepadBadge gamepad={gamepad} />}
         actions={<GamepadActions gamepad={gamepad} />}
       />
       <CardContent>
-        <div className="grid gap-6 grid-cols-2 bg-muted/50 rounded-md p-4">
-          <div className="space-y-2">
-            <div className="tracking-tight text-sm font-medium">Left x-axis</div>
-            <div className="text-2xl font-bold">{formatAxisValue(gamepad.x1)}</div>
+        <div className="bg-muted/50 rounded-md pt-8 px-4 flex flex-col items-center overflow-clip relative">
+          <div className="h-[12rem] w-[32rem] relative">
+            <Image
+              src="/images/xbox-controller.png"
+              fill
+              alt="XBOX Controler"
+              className="absolute inset-0 object-cover object-top mix-blend-luminosity opacity-75 drop-shadow-[0_0_24px_hsl(223deg_84%_5%_/_50%)]"
+            />
+            {gamepad.isConnected && (
+              <svg viewBox="0 0 32 12" xmlns="http://www.w3.org/2000/svg" className="inset-0 absolute">
+                <GamepadThumbstick x={gamepad.x1} y={gamepad.y1} transform="translate(-5.9 -0.6) scale(0.2)" />
+                <GamepadThumbstick x={gamepad.x2} y={gamepad.y2} transform="translate(3.04 2.82) scale(0.2)" />
+              </svg>
+            )}
           </div>
-          <div className="space-y-2">
-            <div className="tracking-tight text-sm font-medium">Left y-axis</div>
-            <div className="text-2xl font-bold">{formatAxisValue(gamepad.y1)}</div>
-          </div>
-          <div className="space-y-2">
-            <div className="tracking-tight text-sm font-medium">Right x-axis</div>
-            <div className="text-2xl font-bold">{formatAxisValue(gamepad.x2)}</div>
-          </div>
-          <div className="space-y-2">
-            <div className="tracking-tight text-sm font-medium">Right y-axis</div>
-            <div className="text-2xl font-bold">{formatAxisValue(gamepad.y2)}</div>
-          </div>
+
+          {gamepad.isConnected && (
+            <>
+              <div className="absolute left-4 top-4 space-y-1 text-left">
+                <div className="text-muted-foreground tracking-tight text-sm font-medium">Left stick</div>
+                <div className="text-xl font-bold drop-shadow-[0_0_8px_hsl(223deg_84%_5%_/_100%)]">
+                  ({formatAxisValue(gamepad.x1)}, {formatAxisValue(gamepad.y1)})
+                </div>
+              </div>
+              <div className="absolute right-4 top-4 space-y-1 text-right">
+                <div className="text-muted-foreground tracking-tight text-sm font-medium">Right stick</div>
+                <div className="text-xl font-bold drop-shadow-[0_0_8px_hsl(223deg_84%_5%_/_100%)]">
+                  ({formatAxisValue(gamepad.x2)}, {formatAxisValue(gamepad.y2)})
+                </div>
+              </div>
+            </>
+          )}
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+function GamepadThumbstick({ x, y, transform }: { x: number; y: number; transform: string }) {
+  const cx = 16 + (x / 100) * 4;
+  const cy = 6 + (-y / 100) * 4;
+
+  return (
+    <g transform={transform} style={{ transformOrigin: "50% 50%" }}>
+      <line x1={cx} y1="2" x2={cx} y2="10" stroke="white" strokeWidth="0.2" strokeLinecap="round" opacity={0.5} />
+      <line x1="12" y1={cy} x2="20" y2={cy} stroke="white" strokeWidth="0.2" strokeLinecap="round" opacity={0.5} />
+      <circle cx={cx} cy={cy} r="2" stroke="white" strokeWidth="0.2" fill="transparent" opacity={0.75} />
+      <circle cx={cx} cy={cy} r="1" fill="white" opacity={0.75} />
+    </g>
   );
 }
 

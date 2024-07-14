@@ -2,9 +2,9 @@ import { Navigation } from "@/components/navigation";
 
 export default function Page({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="hidden flex-col md:flex">
+    <div>
       <div className="border-b">
-        <div className="flex h-16 items-center px-4">
+        <div className="flex h-16 items-center px-8">
           <Navigation />
         </div>
       </div>
