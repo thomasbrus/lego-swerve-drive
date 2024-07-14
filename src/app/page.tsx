@@ -3,25 +3,10 @@
 import Page from "@/components/page";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardFooter, CardHeader as _CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardHeader as _CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Hub, useHub } from "@/hooks/use-hub";
 import { Input } from "@/components/ui/input";
-import { useCallback, useState } from "react";
-import {
-  ColumnDef,
-  ColumnFiltersState,
-  SortingState,
-  VisibilityState,
-  flexRender,
-  getCoreRowModel,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
-  useReactTable,
-} from "@tanstack/react-table";
-
+import { useCallback } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -40,6 +25,7 @@ export default function Home() {
         <FrontHubCard frontHub={frontHub} />
         <RearHub rearHub={rearHub} />
         <GamepadCard frontHub={frontHub} rearHub={rearHub} />
+        <TelemetryCard />
       </div>
     </Page>
   );
@@ -87,7 +73,7 @@ function FrontHubCard({ frontHub }: { frontHub: Hub }) {
       <CardHeader
         title="Front Hub"
         badge={<HubBadge hub={frontHub} />}
-        description="The hub that controls the front left and right swerve modules."
+        description="Hub that controls the front left and right swerve modules."
         actions={<HubActions hub={frontHub} />}
       />
       <CardContent>
@@ -114,7 +100,7 @@ function RearHub({ rearHub }: { rearHub: Hub }) {
       <CardHeader
         title="Rear Hub"
         badge={<HubBadge hub={rearHub} />}
-        description="The hub that controls the rear left and right swerve modules."
+        description="Hub that controls the rear left and right swerve modules."
         actions={<HubActions hub={rearHub} />}
       />
       <CardContent>
@@ -218,14 +204,8 @@ function GamepadCard({ frontHub, rearHub }: { frontHub: Hub; rearHub: Hub }) {
   function handleUpdate(gamepadUpdate: GamepadUpdate) {
     let { x1, y1, x2, y2: _ } = gamepadUpdate;
 
-    if (Math.abs(x1) < DEADZONE) x1 = 0;
-    if (Math.abs(y1) < DEADZONE) y1 = 0;
-    if (Math.abs(x2) < DEADZONE) x2 = 0;
-
-    // Scale it down a bit
+    // Scale angular velocity joystick down a bit
     x2 *= 100 / Math.sqrt(Math.pow(100, 2) + Math.pow(100, 2));
-
-    console.log({ x1, y1, x2 });
 
     if (frontHub.isUserProgramRunning) frontHub.sendMessage([x1, y1, x2].join(","));
     if (rearHub.isUserProgramRunning) rearHub.sendMessage([x1, y1, x2].join(","));
@@ -237,23 +217,28 @@ function GamepadCard({ frontHub, rearHub }: { frontHub: Hub; rearHub: Hub }) {
 
   return (
     <Card>
-      <CardHeader title="Gamepad" badge={<GamepadBadge gamepad={gamepad} />} />
+      <CardHeader
+        title="Gamepad"
+        description="Connect any controller via Bluetooth."
+        badge={<GamepadBadge gamepad={gamepad} />}
+        actions={<GamepadActions gamepad={gamepad} />}
+      />
       <CardContent>
         <div className="grid gap-6 grid-cols-2 bg-muted/50 rounded-md p-4">
           <div className="space-y-2">
-            <div className="tracking-tight text-sm font-medium">Left joystick x-axis</div>
+            <div className="tracking-tight text-sm font-medium">Left x-axis</div>
             <div className="text-2xl font-bold">{formatAxisValue(gamepad.x1)}</div>
           </div>
           <div className="space-y-2">
-            <div className="tracking-tight text-sm font-medium">Left joystick y-axis</div>
+            <div className="tracking-tight text-sm font-medium">Left y-axis</div>
             <div className="text-2xl font-bold">{formatAxisValue(gamepad.y1)}</div>
           </div>
           <div className="space-y-2">
-            <div className="tracking-tight text-sm font-medium">Right joystick x-axis</div>
+            <div className="tracking-tight text-sm font-medium">Right x-axis</div>
             <div className="text-2xl font-bold">{formatAxisValue(gamepad.x2)}</div>
           </div>
           <div className="space-y-2">
-            <div className="tracking-tight text-sm font-medium">Right joystick y-axis</div>
+            <div className="tracking-tight text-sm font-medium">Right y-axis</div>
             <div className="text-2xl font-bold">{formatAxisValue(gamepad.y2)}</div>
           </div>
         </div>
@@ -266,153 +251,25 @@ function GamepadBadge({ gamepad }: { gamepad: Gamepad }) {
   return <Badge variant={gamepad.isConnected ? "default" : "outline"}>{gamepad.isConnected ? "Connected" : "Not connected"}</Badge>;
 }
 
-function MessagesCard({ hubs: { frontHub, rearHub } }: { hubs: { frontHub: Hub; rearHub: Hub } }) {
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [message, setMessage] = useState("");
-  const [tabsValue, setTabsValue] = useState<string>("steer");
-
-  function handleSendMessage(message: string) {
-    const hubs = { steer: frontHub, drive: rearHub };
-    hubs[tabsValue as "steer" | "drive"].sendMessage(message);
-    setMessages([...messages, { id: "1", timestamp: Date.now(), source: tabsValue, content: message }]);
-    setMessage("");
+function GamepadActions({ gamepad }: { gamepad: Gamepad }) {
+  function handleCalibrateClick() {
+    gamepad.calibrate();
   }
 
-  function handleInputChange(event: React.ChangeEvent<HTMLInputElement>) {
-    setMessage(event.target.value);
-  }
+  return (
+    <div className="flex gap-2">
+      <Button variant="secondary" onClick={handleCalibrateClick} disabled={!gamepad.isConnected}>
+        Calibrate
+      </Button>
+    </div>
+  );
+}
 
-  function handleInputKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
-    if (event.key === "Enter") {
-      handleSendMessage(message);
-    } else if (event.key === "ArrowUp" && messages.length > 0) {
-      setMessage(messages[messages.length - 1].content);
-    }
-  }
-
-  function handleSendButtonClick() {
-    handleSendMessage(message);
-  }
-
+function TelemetryCard() {
   return (
     <Card>
-      <CardHeader title="Messages" />
-      <CardContent>
-        <Tabs value={tabsValue} onValueChange={setTabsValue}>
-          <TabsList className="grid w-full grid-cols-2 mt-2 mb-6">
-            <TabsTrigger value="steer">Front Hub</TabsTrigger>
-            <TabsTrigger value="drive">Rear Hub</TabsTrigger>
-          </TabsList>
-          <MessagesCardTabsContent value="steer" />
-          <MessagesCardTabsContent value="drive" />
-        </Tabs>
-      </CardContent>
-      <CardFooter className="flex gap-4 justify-between">
-        <Input value={message} placeholder="Type your message here." onChange={handleInputChange} onKeyDown={handleInputKeyDown} />
-        <Button variant="secondary" onClick={handleSendButtonClick}>
-          Send
-        </Button>
-      </CardFooter>
+      <CardHeader title="Telemetry" />
+      <CardContent>...</CardContent>
     </Card>
-  );
-}
-
-function MessagesCardTabsContent({ value }: { value: string }) {
-  return (
-    <TabsContent value={value}>
-      <DataTableDemo value={value} />
-    </TabsContent>
-  );
-}
-
-const data: Message[] = [];
-
-export type Message = {
-  id: string;
-  timestamp: number;
-  source: string;
-  content: string;
-};
-
-export const columns: ColumnDef<Message>[] = [
-  {
-    id: "select",
-    header: "Source",
-    cell: ({ row }) => row.getValue("source"),
-  },
-  {
-    accessorKey: "timestamp",
-    header: "Timestamp",
-    cell: ({ row }) => row.getValue("timestamp"),
-  },
-  {
-    accessorKey: "contetn",
-    header: "Content",
-    cell: ({ row }) => row.getValue("content"),
-  },
-];
-
-export function DataTableDemo({ value }: { value: string }) {
-  const [sorting, setSorting] = useState<SortingState>([]);
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
-  const [rowSelection, setRowSelection] = useState({});
-
-  const table = useReactTable({
-    data,
-    columns,
-    onSortingChange: setSorting,
-    onColumnFiltersChange: setColumnFilters,
-    getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    onColumnVisibilityChange: setColumnVisibility,
-    onRowSelectionChange: setRowSelection,
-    state: {
-      sorting,
-      columnFilters,
-      columnVisibility,
-      rowSelection,
-    },
-  });
-
-  return (
-    <div className="w-full">
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => {
-                  return (
-                    <TableHead key={header.id}>
-                      {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
-                    </TableHead>
-                  );
-                })}
-              </TableRow>
-            ))}
-          </TableHeader>
-          <TableBody>
-            {table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
-                  ))}
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 text-center">
-                  No messages for {value} hub.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
-    </div>
   );
 }

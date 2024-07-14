@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export interface Gamepad {
   isConnected: boolean;
@@ -6,6 +6,7 @@ export interface Gamepad {
   y1: number;
   x2: number;
   y2: number;
+  calibrate: () => void;
 }
 
 export interface GamepadUpdate {
@@ -17,12 +18,16 @@ export interface GamepadUpdate {
 
 export function useGamepad({ fps = 60, onUpdate }: { fps: number; onUpdate: (gamepad: GamepadUpdate) => void }) {
   const timer = useRef<number>();
-
   const [isConnected, setIsConnected] = useState(false);
   const [x1, setX1] = useState(0);
   const [y1, setY1] = useState(0);
   const [x2, setX2] = useState(0);
   const [y2, setY2] = useState(0);
+  const [centerX1, setCenterX1] = useState(0);
+  const [centerY1, setCenterY1] = useState(0);
+  const [centerX2, setCenterX2] = useState(0);
+  const [centerY2, setCenterY2] = useState(0);
+  const [deadzone, setDeadzone] = useState(0);
 
   function handleGamepadConnected() {
     setIsConnected(true);
@@ -43,30 +48,74 @@ export function useGamepad({ fps = 60, onUpdate }: { fps: number; onUpdate: (gam
   }, []);
 
   useEffect(() => {
-    timer.current = window.setTimeout(updateLoop, 0);
+    timer.current = window.setTimeout(updateLoop, 0, isConnected, x1, y1, x2, y2, centerX1, centerY1, centerX2, centerY2, deadzone);
     return () => window.clearTimeout(timer.current);
-  }, [isConnected]);
+  }, [isConnected, x1, y1, x2, y2, centerX1, centerY1, centerX2, centerY2, deadzone]);
 
-  function updateLoop() {
+  function updateLoop(
+    isConnected: boolean,
+    x1: number,
+    y1: number,
+    x2: number,
+    y2: number,
+    centerX1: number,
+    centerY1: number,
+    centerX2: number,
+    centerY2: number,
+    deadzone: number
+  ) {
     if (!isConnected) return;
 
     const gamepad = navigator.getGamepads()[0];
 
     if (!gamepad) return;
 
-    const x1 = gamepad.axes[0] * 100;
-    const y1 = -gamepad.axes[1] * 100;
-    const x2 = gamepad.axes[2] * 100;
-    const y2 = -gamepad.axes[3] * 100;
+    function normalizeAxisValue(value: number, center: number, deadzone: number) {
+      const normalizedValue = (100 * (value - center)) / (100 + (value > center ? -center : center));
+      return Math.abs(normalizedValue) < deadzone ? 0 : Math.round(normalizedValue);
+    }
 
-    setX1(x1);
-    setY1(y1);
-    setX2(x2);
-    setY2(y2);
+    const newX1 = normalizeAxisValue(gamepad.axes[0] * 100, centerX1, deadzone);
+    const newY1 = normalizeAxisValue(-gamepad.axes[1] * 100, centerY1, deadzone);
+    const newX2 = normalizeAxisValue(gamepad.axes[2] * 100, centerX2, deadzone);
+    const newY2 = normalizeAxisValue(-gamepad.axes[3] * 100, centerY2, deadzone);
 
-    onUpdate({ x1, y1, x2, y2 });
+    if (newX1 !== x1 || newY1 !== y1 || newX2 !== x2 || newY2 !== y2) {
+      setX1(newX1);
+      setY1(newY1);
+      setX2(newX2);
+      setY2(newY2);
 
-    timer.current = window.setTimeout(updateLoop, 1000 / fps);
+      onUpdate({ x1: newX1, y1: newY1, x2: newX2, y2: newY2 });
+    }
+
+    timer.current = window.setTimeout(
+      updateLoop,
+      1000 / fps,
+      isConnected,
+      newX1,
+      newY1,
+      newX2,
+      newY2,
+      centerX1,
+      centerY1,
+      centerX2,
+      centerY2,
+      deadzone
+    );
+  }
+
+  function calibrate() {
+    if (!isConnected) return;
+    const gamepad = navigator.getGamepads()[0];
+
+    if (!gamepad) return;
+
+    setCenterX1(gamepad.axes[0] * 100);
+    setCenterY1(-gamepad.axes[1] * 100);
+    setCenterX2(gamepad.axes[2] * 100);
+    setCenterY2(-gamepad.axes[3] * 100);
+    setDeadzone(10);
   }
 
   const gamepad: Gamepad = {
@@ -75,6 +124,7 @@ export function useGamepad({ fps = 60, onUpdate }: { fps: number; onUpdate: (gam
     y1,
     x2,
     y2,
+    calibrate,
   };
 
   return gamepad;
