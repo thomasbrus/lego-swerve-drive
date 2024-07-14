@@ -25,13 +25,14 @@ export interface Hub {
     characteristic: BluetoothRemoteGATTCharacteristic;
   }>;
   disconnect: () => void;
-  sendMessage: (message: string, opts?: { log: boolean }) => Promise<void>;
+  sendMessage: (message: string, opts?: { log: boolean; guarantueed: boolean }) => Promise<void>;
   startUserProgram: () => Promise<void>;
   stopUserProgram: () => Promise<void>;
 }
 
 export function useHub({ onMessage }: { onMessage: (message: string) => void }) {
   const readyRef = useRef(true);
+  const commandQueueRef = useRef<string[]>([]);
 
   const {
     isConnecting,
@@ -54,7 +55,14 @@ export function useHub({ onMessage }: { onMessage: (message: string) => void }) 
         const message = data.slice(1);
         logIncomingHubMessage(message);
         onMessage(message);
-        if (message === "ack") readyRef.current = true;
+        if (message === "ack") {
+          // Deal with queued commands if ack is received until the queue is empty
+          if (commandQueueRef.current.length > 0) {
+            sendCommand(commandQueueRef.current.shift()!);
+          } else {
+            readyRef.current = true;
+          }
+        }
         break;
     }
   }
@@ -75,24 +83,33 @@ export function useHub({ onMessage }: { onMessage: (message: string) => void }) 
     });
   }
 
-  async function sendMessage(message: string, opts = { log: true }) {
-    if (!readyRef.current) {
-      return;
+  async function sendMessage(message: string, opts: { log: boolean; guarantueed: boolean } = { log: true, guarantueed: false }) {
+    opts.log = opts.log ?? true;
+    opts.guarantueed = opts.guarantueed ?? false;
+
+    // If not ready and not guaranteed delivery, drop the message.
+    if (!readyRef.current && !opts.guarantueed) return;
+
+    return await sendCommand(WRITE_STDIN_COMMAND + message + "\n", { log: opts.log });
+  }
+
+  async function sendCommand(command: string, opts: { log: boolean } = { log: true }) {
+    if (opts.log) logOutgoingHubMessage(command);
+
+    if (readyRef.current) {
+      readyRef.current = false;
+      return await writeBluetooth(command);
+    } else {
+      commandQueueRef.current.push(command);
     }
-
-    if (opts.log) logOutgoingHubMessage(message);
-
-    readyRef.current = false;
-
-    await writeBluetooth(WRITE_STDIN_COMMAND + message + "\n");
   }
 
   async function startUserProgram() {
-    return await writeBluetooth(START_USER_PROGRAM_COMMAND);
+    return await sendCommand(START_USER_PROGRAM_COMMAND);
   }
 
   async function stopUserProgram() {
-    return await writeBluetooth(STOP_USER_PROGRAM_COMMAND);
+    return await sendCommand(STOP_USER_PROGRAM_COMMAND);
   }
 
   const hub: Hub = {
