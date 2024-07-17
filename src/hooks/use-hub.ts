@@ -25,7 +25,7 @@ export interface Hub {
     characteristic: BluetoothRemoteGATTCharacteristic;
   }>;
   disconnect: () => void;
-  sendMessage: (message: string, opts?: { log: boolean; guarantueed: boolean }) => Promise<void>;
+  sendMessage: (command: string, args: string[] | number[], opts?: { log: boolean; guarantueed: boolean }) => Promise<void>;
   startUserProgram: () => Promise<void>;
   stopUserProgram: () => Promise<void>;
 }
@@ -83,17 +83,22 @@ export function useHub({ onMessage }: { onMessage: (message: string) => void }) 
     });
   }
 
-  async function sendMessage(message: string, opts: { log: boolean; guarantueed: boolean } = { log: true, guarantueed: false }) {
+  async function sendMessage(
+    command: string,
+    args: string[] | number[],
+    opts: { log: boolean; guarantueed: boolean } = { log: true, guarantueed: false }
+  ) {
     opts.log = opts.log ?? true;
     opts.guarantueed = opts.guarantueed ?? false;
 
     // If not ready and not guaranteed delivery, drop the message.
     if (!readyRef.current && !opts.guarantueed) return;
 
-    return await sendCommand(WRITE_STDIN_COMMAND + message + "\n", { log: opts.log });
+    return await sendCommand(WRITE_STDIN_COMMAND + [command, args].join(",") + "\n", { log: opts.log });
   }
 
   async function sendCommand(command: string, opts: { log: boolean } = { log: true }) {
+    if (!isUserProgramRunning) return;
     if (opts.log) logOutgoingHubMessage(command);
 
     if (readyRef.current) {

@@ -11,7 +11,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { useGamepad, Gamepad, GamepadUpdate } from "@/hooks/use-gamepad";
+import { useGamepad, Gamepad, AxisUpdate } from "@/hooks/use-gamepad";
 import Image from "next/image";
 
 export default function Home() {
@@ -64,7 +64,7 @@ function FrontHubCard({ frontHub }: { frontHub: Hub }) {
 
   function handleSubmit(data: any) {
     const { vx, vy, omega } = data;
-    frontHub.sendMessage([vx, vy, omega].join(","));
+    frontHub.sendMessage("drive", [vx, vy, omega]);
   }
 
   return (
@@ -91,7 +91,7 @@ function RearHub({ rearHub }: { rearHub: Hub }) {
 
   function handleSubmit(data: any) {
     const { vx, vy, omega } = data;
-    rearHub.sendMessage([vx, vy, omega].join(","));
+    rearHub.sendMessage("drive", [vx, vy, omega]);
   }
 
   return (
@@ -197,17 +197,23 @@ export function HubForm({
 }
 
 function GamepadCard({ frontHub, rearHub }: { frontHub: Hub; rearHub: Hub }) {
-  const cachedHandleUpdate = useCallback(handleUpdate, [frontHub.isUserProgramRunning, rearHub.isUserProgramRunning]);
-  const gamepad = useGamepad({ fps: 60, onUpdate: cachedHandleUpdate });
+  const gamepad = useGamepad({ fps: 60, onAxisUpdate: handleAxisUpdate, onButtonPress: handleButtonPress });
 
-  function handleUpdate(gamepadUpdate: GamepadUpdate) {
-    let { x1, y1, x2, y2: _ } = gamepadUpdate;
+  function handleAxisUpdate(axisUpdate: AxisUpdate) {
+    let { x1, y1, x2, y2: _ } = axisUpdate;
 
     // Scale angular velocity joystick down a bit
     x2 *= 100 / Math.sqrt(Math.pow(100, 2) + Math.pow(100, 2));
 
-    if (frontHub.isUserProgramRunning) frontHub.sendMessage([x1, y1, x2].join(","));
-    if (rearHub.isUserProgramRunning) rearHub.sendMessage([x1, y1, x2].join(","));
+    frontHub.sendMessage("drive", [x1, y1, x2]);
+    rearHub.sendMessage("drive", [x1, y1, x2]);
+  }
+
+  function handleButtonPress(index: number) {
+    if (index === 1) {
+      frontHub.stopUserProgram();
+      rearHub.stopUserProgram();
+    }
   }
 
   function formatAxisValue(value: number) {
@@ -296,8 +302,18 @@ function GamepadActions({ gamepad }: { gamepad: Gamepad }) {
 function TelemetryCard() {
   return (
     <Card>
-      <CardHeader title="Telemetry" />
-      <CardContent>...</CardContent>
+      <CardHeader title="Telemetry" description="Real-time data from the robot." />
+      <CardContent>
+        <div className="bg-muted/50 rounded-md p-4 flex flex-col items-center justify-center flex-grow h-[560px]">
+          <Image
+            src="/images/swerve-drive.png"
+            width={320}
+            height={320}
+            alt="LEGO Swerve Drive"
+            className="mix-blend-luminosity opacity-75 drop-shadow-[0_0_24px_hsl(223deg_84%_5%_/_50%)] rotate-45"
+          />
+        </div>
+      </CardContent>
     </Card>
   );
 }

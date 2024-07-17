@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export interface Gamepad {
   isConnected: boolean;
@@ -9,14 +9,22 @@ export interface Gamepad {
   calibrate: () => void;
 }
 
-export interface GamepadUpdate {
+export interface AxisUpdate {
   x1: number;
   y1: number;
   x2: number;
   y2: number;
 }
 
-export function useGamepad({ fps = 60, onUpdate }: { fps: number; onUpdate: (gamepad: GamepadUpdate) => void }) {
+export function useGamepad({
+  fps = 60,
+  onAxisUpdate,
+  onButtonPress,
+}: {
+  fps: number;
+  onAxisUpdate: (gamepad: AxisUpdate) => void;
+  onButtonPress: (index: number) => void;
+}) {
   const timer = useRef<number>();
   const [isConnected, setIsConnected] = useState(false);
   const [x1, setX1] = useState(0);
@@ -28,6 +36,7 @@ export function useGamepad({ fps = 60, onUpdate }: { fps: number; onUpdate: (gam
   const [centerX2, setCenterX2] = useState(0);
   const [centerY2, setCenterY2] = useState(0);
   const [deadzone, setDeadzone] = useState(0);
+  const [buttons, setButtons] = useState<readonly GamepadButton[]>([]);
 
   function handleGamepadConnected() {
     setIsConnected(true);
@@ -48,9 +57,23 @@ export function useGamepad({ fps = 60, onUpdate }: { fps: number; onUpdate: (gam
   }, []);
 
   useEffect(() => {
-    timer.current = window.setTimeout(updateLoop, 0, isConnected, x1, y1, x2, y2, centerX1, centerY1, centerX2, centerY2, deadzone);
+    timer.current = window.setTimeout(
+      updateLoop,
+      0,
+      isConnected,
+      x1,
+      y1,
+      x2,
+      y2,
+      centerX1,
+      centerY1,
+      centerX2,
+      centerY2,
+      deadzone,
+      buttons
+    );
     return () => window.clearTimeout(timer.current);
-  }, [isConnected, x1, y1, x2, y2, centerX1, centerY1, centerX2, centerY2, deadzone]);
+  }, [isConnected, x1, y1, x2, y2, centerX1, centerY1, centerX2, centerY2, deadzone, buttons]);
 
   function updateLoop(
     isConnected: boolean,
@@ -62,7 +85,8 @@ export function useGamepad({ fps = 60, onUpdate }: { fps: number; onUpdate: (gam
     centerY1: number,
     centerX2: number,
     centerY2: number,
-    deadzone: number
+    deadzone: number,
+    buttons: readonly GamepadButton[]
   ) {
     if (!isConnected) return;
 
@@ -86,8 +110,18 @@ export function useGamepad({ fps = 60, onUpdate }: { fps: number; onUpdate: (gam
       setX2(newX2);
       setY2(newY2);
 
-      onUpdate({ x1: newX1, y1: newY1, x2: newX2, y2: newY2 });
+      onAxisUpdate({ x1: newX1, y1: newY1, x2: newX2, y2: newY2 });
     }
+
+    const currentButtons = gamepad.buttons;
+
+    for (let i = 0; i < buttons.length; i++) {
+      if (!buttons[i].pressed && currentButtons[i].pressed) {
+        onButtonPress(i);
+      }
+    }
+
+    setButtons(currentButtons);
 
     timer.current = window.setTimeout(
       updateLoop,
@@ -101,7 +135,8 @@ export function useGamepad({ fps = 60, onUpdate }: { fps: number; onUpdate: (gam
       centerY1,
       centerX2,
       centerY2,
-      deadzone
+      deadzone,
+      buttons
     );
   }
 

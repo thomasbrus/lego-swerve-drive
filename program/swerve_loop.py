@@ -42,8 +42,8 @@ def swerve_loop(hub, field_centric=False, callback=lambda _module_states: None):
             if cmd == "exit":
                 break
             elif cmd == "set_drive_base_center":
-                dx, dy = [int(arg) for arg in args]
-                drive_base_center = (max(-1, min(1, drive_base_center[0] + dx / 100)), max(-1, min(1, drive_base_center[1] + dy / 100)))
+                cy, cx = [int(arg) for arg in args]
+                drive_base_center = (cx, cy)
             elif cmd == "toggle_field_centric":
                 field_centric = not field_centric
             elif cmd == "drive":
@@ -55,9 +55,7 @@ def swerve_loop(hub, field_centric=False, callback=lambda _module_states: None):
                     vy = vx * sin(radians(angle)) + vy * cos(radians(angle))
 
                 drive_base_velocity = (vx, vy, omega)
-                module_states = kinematics.to_swerve_module_states(
-                    drive_base_velocity=drive_base_velocity, drive_base_center=drive_base_center
-                )
+                module_states = kinematics.to_swerve_module_states(drive_base_velocity, drive_base_center)
 
                 SwerveDriveKinematics.normalize_module_states(module_states)
 
