@@ -6,6 +6,7 @@ export interface Gamepad {
   y1: number;
   x2: number;
   y2: number;
+  buttons: readonly GamepadButton[];
   calibrate: () => void;
 }
 
@@ -159,6 +160,7 @@ export function useGamepad({
     y1,
     x2,
     y2,
+    buttons,
     calibrate,
   };
 

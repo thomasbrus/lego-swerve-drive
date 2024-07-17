@@ -13,6 +13,7 @@ import { z } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useGamepad, Gamepad, AxisUpdate } from "@/hooks/use-gamepad";
 import Image from "next/image";
+import { cn } from "@/lib/utils";
 
 export default function Home() {
   const frontHub = useHub({ onMessage: () => {} });
@@ -20,11 +21,17 @@ export default function Home() {
 
   return (
     <Page title="Dashboard">
-      <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
+      <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
         <FrontHubCard frontHub={frontHub} />
         <RearHub rearHub={rearHub} />
-        <GamepadCard frontHub={frontHub} rearHub={rearHub} />
-        <TelemetryCard />
+        <div className="grid gap-4 self-start">
+          <GamepadCard frontHub={frontHub} rearHub={rearHub} />
+          <Card>
+            <CardHeader title="Logs" />
+            <CardContent>...</CardContent>
+          </Card>
+        </div>
+        <TelemetryCard frontHub={frontHub} rearHub={rearHub} />
       </div>
     </Page>
   );
@@ -231,11 +238,18 @@ function GamepadCard({ frontHub, rearHub }: { frontHub: Hub; rearHub: Hub }) {
       <CardContent>
         <div className="bg-muted/50 rounded-md pt-8 px-4 flex flex-col items-center overflow-clip relative">
           <div className="h-[12rem] w-[32rem] relative">
+            <GamepadButton isPressed={gamepad?.buttons[0]?.pressed} className="bg-[#74bf3f] w-[24px] h-[26px] top-[98px] right-[150px]" />
+            <GamepadButton isPressed={gamepad?.buttons[1]?.pressed} className="bg-[#e63e35] w-[23px] h-[25px] top-[75px] right-[126px]" />
+            <GamepadButton isPressed={gamepad?.buttons[2]?.pressed} className="bg-[#0d9de7] w-[24px] h-[26px] top-[73px] right-[175px]" />
+            <GamepadButton isPressed={gamepad?.buttons[3]?.pressed} className="bg-[#e4e236] w-[24px] h-[26px] top-[49px] right-[150px]" />
             <Image
               src="/images/xbox-controller.png"
               fill
               alt="XBOX Controler"
-              className="absolute inset-0 object-cover object-top mix-blend-luminosity opacity-75 drop-shadow-[0_0_24px_hsl(223deg_84%_5%_/_50%)]"
+              className={cn(
+                "absolute inset-0 object-cover object-top mix-blend-luminosity drop-shadow-[0_0_24px_hsl(223deg_84%_5%_/_50%)]",
+                gamepad.isConnected ? "opacity-100" : "opacity-75"
+              )}
             />
             {gamepad.isConnected && (
               <svg viewBox="0 0 32 12" xmlns="http://www.w3.org/2000/svg" className="inset-0 absolute">
@@ -281,6 +295,10 @@ function GamepadThumbstick({ x, y, transform }: { x: number; y: number; transfor
   );
 }
 
+function GamepadButton({ isPressed, className }: { isPressed: boolean; className: string }) {
+  return <div className={cn("absolute rounded-full", isPressed ? "opacity-100" : "opacity-0", className)} />;
+}
+
 function GamepadBadge({ gamepad }: { gamepad: Gamepad }) {
   return <Badge variant={gamepad.isConnected ? "default" : "outline"}>{gamepad.isConnected ? "Connected" : "Not connected"}</Badge>;
 }
@@ -299,7 +317,7 @@ function GamepadActions({ gamepad }: { gamepad: Gamepad }) {
   );
 }
 
-function TelemetryCard() {
+function TelemetryCard({ frontHub, rearHub }: { frontHub: Hub; rearHub: Hub }) {
   return (
     <Card>
       <CardHeader title="Telemetry" description="Real-time data from the robot." />
@@ -307,10 +325,13 @@ function TelemetryCard() {
         <div className="bg-muted/50 rounded-md p-4 flex flex-col items-center justify-center flex-grow h-[560px]">
           <Image
             src="/images/swerve-drive.png"
-            width={320}
-            height={320}
+            width={360}
+            height={360}
             alt="LEGO Swerve Drive"
-            className="mix-blend-luminosity opacity-75 drop-shadow-[0_0_24px_hsl(223deg_84%_5%_/_50%)] rotate-45"
+            className={cn(
+              "mix-blend-luminosity drop-shadow-[0_0_24px_hsl(223deg_84%_5%_/_50%)]",
+              frontHub.isConnected && rearHub.isConnected ? "opacity-100" : "opacity-75"
+            )}
           />
         </div>
       </CardContent>
