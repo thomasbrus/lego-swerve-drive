@@ -1,25 +1,15 @@
-from pybricks.tools import wait
 from usys import stdout, stdin
 from umath import cos, radians, sin
-from io_simulation import SimulatedIO
+from io_simulation import SimulatedIO, Reading
 from swerve import SwerveDriveKinematics, SwerveModule
 from swerve_telemetry import swerve_telemetry
 
-DEBUG = False
+DEBUG = True
 input_readings = [
-    "drive,0,100,0\n",
-    "drive,0,100,0\n",
-    "drive,100,0,0\n",
-    "drive,100,0,0\n",
-    "drive,0,100,0\n",
-    "drive,0,100,0\n",
-    "drive,100,0,0\n",
-    "drive,100,0,0\n",
-    "drive,0,100,0\n",
-    "drive,0,100,0\n",
-    "drive,100,0,0\n",
-    "drive,100,0,0\n",
-    "exit\n",
+    Reading("drive,0,100,0\n", 2000),
+    Reading("drive,0,-100,0\n", 3000),
+    Reading("drive,100,0,0\n", 5000),
+    Reading("exit\n", 500),
 ]
 simulated_io = SimulatedIO(input_readings=input_readings)
 stdin = simulated_io if DEBUG else stdin
@@ -57,8 +47,8 @@ def swerve_loop(hub, swerve_modules):
             handle_input(input, state)
             ack_with_telemetry(state)
 
-            if DEBUG:
-                wait(1000)
+    except SystemExit:
+        pass
 
     except Exception as e:
         stdout.write(str(e))
