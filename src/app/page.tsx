@@ -204,7 +204,7 @@ export function HubForm({
 }
 
 function GamepadCard({ frontHub, rearHub }: { frontHub: Hub; rearHub: Hub }) {
-  const gamepad = useGamepad({ fps: 60, onAxisUpdate: handleAxisUpdate, onButtonPress: handleButtonPress });
+  const gamepad = useGamepad({ fps: 4, onAxisUpdate: handleAxisUpdate, onButtonPress: handleButtonPress });
 
   function handleAxisUpdate(axisUpdate: AxisUpdate) {
     let { x1, y1, x2, y2: _ } = axisUpdate;

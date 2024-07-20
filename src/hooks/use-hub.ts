@@ -55,14 +55,14 @@ export function useHub({ onMessage }: { onMessage: (message: string) => void }) 
         const message = data.slice(1);
         logIncomingHubMessage(message);
         onMessage(message);
-        if (message === "ack") {
-          // Deal with queued commands if ack is received until the queue is empty
-          if (commandQueueRef.current.length > 0) {
-            sendCommand(commandQueueRef.current.shift()!);
-          } else {
-            readyRef.current = true;
-          }
-        }
+        // if (message === "ack") {
+        //   // Deal with queued commands if ack is received until the queue is empty
+        //   if (commandQueueRef.current.length > 0) {
+        //     sendCommand(commandQueueRef.current.shift()!);
+        //   } else {
+        //     readyRef.current = true;
+        //   }
+        // }
         break;
     }
   }
@@ -92,7 +92,7 @@ export function useHub({ onMessage }: { onMessage: (message: string) => void }) 
     opts.guarantueed = opts.guarantueed ?? false;
 
     // If not ready and not guaranteed delivery, drop the message.
-    if (!readyRef.current && !opts.guarantueed) return;
+    // if (!readyRef.current && !opts.guarantueed) return;
 
     return await sendCommand(WRITE_STDIN_COMMAND + [command, args].join(",") + "\n", { log: opts.log });
   }
@@ -100,14 +100,16 @@ export function useHub({ onMessage }: { onMessage: (message: string) => void }) 
   async function sendCommand(command: string, opts: { log: boolean } = { log: true }) {
     if (opts.log) logOutgoingHubMessage(command);
 
-    console.log("sendMessage", command, opts, readyRef);
+    // console.log("sendMessage", command, opts, readyRef);
 
-    if (readyRef.current) {
-      readyRef.current = false;
-      return await writeBluetooth(command);
-    } else {
-      commandQueueRef.current.push(command);
-    }
+    // if (readyRef.current) {
+    //   readyRef.current = false;
+    //   return await writeBluetooth(command);
+    // } else {
+    //   commandQueueRef.current.push(command);
+    // }
+
+    return await writeBluetooth(command);
   }
 
   async function startUserProgram() {
