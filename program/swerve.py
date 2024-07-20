@@ -60,9 +60,10 @@ class SwerveModuleState:
 
 
 class SwerveModule:
-    def __init__(self, drive_motor: Motor, turning_motor: Motor) -> None:
+    def __init__(self, drive_motor: Motor, turning_motor: Motor, index: int) -> None:
         self.drive_motor = drive_motor
         self.turning_motor = turning_motor
+        self.index = index
 
     @classmethod
     def set_desired_states(cls, swerve_modules, desired_states, wait=False):
