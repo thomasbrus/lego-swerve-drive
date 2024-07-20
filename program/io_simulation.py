@@ -16,9 +16,6 @@ class SimulatedIO:
         self.current_reading_start_time = 0
 
     def readline(self):
-        # Simulate reading the input
-        wait(50)
-
         if not self.input_readings:
             return self.current_reading.value if self.current_reading else ""
 

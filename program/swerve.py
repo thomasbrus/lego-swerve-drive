@@ -18,7 +18,7 @@ class SwerveDriveMotor(Motor):
     def __init__(self, port: Port, positive_direction=Direction.CLOCKWISE) -> None:
         super().__init__(port, positive_direction, None, True, 360)
 
-        drive_limits = dict(acceleration=1000)
+        drive_limits = dict(acceleration=4000)
         self.control.limits(**drive_limits)
         self.positive_direction = positive_direction
 
@@ -82,7 +82,7 @@ class SwerveModule:
         for swerve_module, desired_state, optimized_state in optimized_modules:
             turning_speed = percentage_to_speed(desired_state.speed)
             # Driving speed is scaled down exponentially with the max angle difference of both modules.
-            optimized_state.speed *= cos(radians(optimized_state.angle - swerve_module.turning_motor.angle())) ** 3
+            optimized_state.speed *= cos(radians(max_angle_difference)) ** 3
             swerve_module.drive_motor.run(percentage_to_speed(optimized_state.speed))
             swerve_module.turning_motor.run_target(target_angle=optimized_state.angle, speed=turning_speed, wait=wait)
 
