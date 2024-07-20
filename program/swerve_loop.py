@@ -5,7 +5,7 @@ from swerve import SwerveDriveKinematics, SwerveModule
 from swerve_telemetry import swerve_telemetry
 from pid_controller import PIDController
 
-DEBUG = True
+DEBUG = False
 input_readings = [
     Reading("drive,0,0,100\n", 1000),
     Reading("drive,0,100,-50\n", 1000),
@@ -47,6 +47,8 @@ class SwerveInput:
 def swerve_loop(hub, swerve_modules):
     state = SwerveLoopState(hub, swerve_modules, drive_base_center=(0, 0), field_centric=False)
 
+    ack_with_telemetry(state)
+
     try:
         while True:
             line = stdin.readline()
@@ -57,6 +59,7 @@ def swerve_loop(hub, swerve_modules):
             input = SwerveInput(line)
 
             handle_input(input, state)
+
             ack_with_telemetry(state)
 
     except SystemExit:
@@ -70,7 +73,7 @@ def swerve_loop(hub, swerve_modules):
 def handle_input(input, state):
     if input.cmd == "exit":
         handle_exit()
-    elif input.cmd == "set_drive_base_center":
+    elif input.cmd == "center":
         handle_set_drive_base_center(input.args, state)
     elif input.cmd == "toggle_field_centric":
         handle_toggle_field_centric(input.args, state)
@@ -118,5 +121,4 @@ def handle_drive(args, state):
 
 
 def ack_with_telemetry(state):
-    values = [f"{value:.2f}" for value in swerve_telemetry(state.hub, state.swerve_modules)]
-    stdout.write(f"ack,{','.join(values)}\n")
+    stdout.buffer.write(b"ack")

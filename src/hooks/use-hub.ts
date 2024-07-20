@@ -98,8 +98,9 @@ export function useHub({ onMessage }: { onMessage: (message: string) => void }) 
   }
 
   async function sendCommand(command: string, opts: { log: boolean } = { log: true }) {
-    if (!isUserProgramRunning) return;
     if (opts.log) logOutgoingHubMessage(command);
+
+    console.log("sendMessage", command, opts, readyRef);
 
     if (readyRef.current) {
       readyRef.current = false;

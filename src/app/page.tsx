@@ -210,13 +210,35 @@ function GamepadCard({ frontHub, rearHub }: { frontHub: Hub; rearHub: Hub }) {
     let { x1, y1, x2, y2: _ } = axisUpdate;
 
     // Scale angular velocity joystick down a bit
-    x2 *= 100 / Math.sqrt(Math.pow(100, 2) + Math.pow(100, 2));
+    x2 *= Math.round(100 / Math.sqrt(Math.pow(100, 2) + Math.pow(100, 2)));
 
     frontHub.sendMessage("drive", [x1, y1, x2]);
     rearHub.sendMessage("drive", [x1, y1, x2]);
   }
 
   function handleButtonPress(index: number) {
+    const UP = 12;
+    const LEFT = 14;
+    const RIGHT = 15;
+    const DOWN = 13;
+    const LEFT_STICK = 10;
+
+    const gamepad = navigator.getGamepads()[0];
+    const buttons = gamepad?.buttons || [];
+
+    if (buttons[LEFT].pressed || buttons[RIGHT].pressed || buttons[UP].pressed || buttons[DOWN].pressed) {
+      const cx = buttons[LEFT].pressed ? -1 : buttons[RIGHT].pressed ? 1 : 0;
+      const cy = buttons[UP].pressed ? 1 : buttons[DOWN].pressed ? -1 : 0;
+
+      frontHub.sendMessage("center", [cx, cy], { log: true, guarantueed: true });
+      rearHub.sendMessage("center", [cx, cy], { log: true, guarantueed: true });
+    }
+
+    if (buttons[LEFT_STICK].pressed) {
+      frontHub.sendMessage("center", [0, 0], { log: true, guarantueed: true });
+      rearHub.sendMessage("center", [0, 0]), { log: true, guarantueed: true };
+    }
+
     if (index === 1) {
       frontHub.stopUserProgram();
       rearHub.stopUserProgram();
