@@ -1,11 +1,11 @@
 # $ pybricksdev run ble two_wheel_hub.py --name "Technic Hub B" --no-wait
 from pybricks.hubs import TechnicHub
-from pybricks.parameters import Axis, Port, Direction, Button, Color
+from pybricks.parameters import Axis, Port, Direction, Button
 from pybricks.tools import wait
 from swerve import SwerveDriveMotor, SwerveTurningMotor, SwerveModule, SwerveDriveKinematics
 from pybricks.iodevices import XboxController
-from controller_simulation import SimulatedController, Reading
-from utils import vector_rotate, vector_angle, vector_distance
+from steering_modes import AckermannSteeringMode, TankSteeringMode, CrabSteeringMode, SwerveSteeringMode
+
 import controller_examples
 
 hub = TechnicHub(front_side=-Axis.Y)
@@ -27,75 +27,51 @@ kinematics = SwerveDriveKinematics(swerve_module_positions=[(-1, 0), (1, 0)])
 
 def get_controller(simulated=False):
     if simulated:
-        return controller_examples.sideways_example()
+        return controller_examples.tank_straight_line_and_turn_example()
     else:
         return XboxController()
 
 
 controller = get_controller(simulated=True)
 
+
 try:
-
-    def shift_center(center, dx, dy):
-        return center[0] + dx, center[1] + dy
-
-    def hub_color(vx, vy):
-        green_hue = 120
-        hue = vector_angle(vector_rotate((vx, vy), green_hue))
-        value = min(100, vector_distance((vx, vy)))
-        return Color(h=hue, s=100, v=value)
-
-    drive_base_center = (0, 0)
-    turn_factor = 0.5
-    field_oriented = True
+    steering_mode = AckermannSteeringMode()
 
     while True:
         pressed_buttons = controller.buttons.pressed()
 
-        if Button.LEFT in pressed_buttons:
-            print("Drive base center shifted left.")
-            drive_base_center = shift_center(drive_base_center, -0.5, 0)
-        elif Button.RIGHT in pressed_buttons:
-            print("Drive base center shifted right.")
-            drive_base_center = shift_center(drive_base_center, 0.5, 0)
-        elif Button.UP in pressed_buttons:
-            print("Drive base center shifted up.")
-            drive_base_center = shift_center(drive_base_center, 0, 0.5)
-        elif Button.DOWN in pressed_buttons:
-            print("Drive base center shifted down.")
-            drive_base_center = shift_center(drive_base_center, 0, -0.5)
-        elif Button.LB in pressed_buttons:
-            print("Turn factor decreased.")
-            turn_factor = max(0.2, turn_factor - 0.1)
-        elif Button.RB in pressed_buttons:
-            print("Turn factor increased.")
-            turn_factor = min(1, turn_factor + 0.1)
-        elif Button.A in pressed_buttons:
-            print("Field-oriented driving enabled.")
-            field_oriented = True
-        elif Button.B in pressed_buttons:
+        if Button.GUIDE in pressed_buttons:
             print("Exiting program.")
             break
+        elif Button.A in pressed_buttons:
+            print("Switching to Ackermann steering mode.")
+            steering_mode = AckermannSteeringMode()
+        elif Button.B in pressed_buttons:
+            print("Switching to Tank steering mode.")
+            steering_mode = TankSteeringMode()
         elif Button.X in pressed_buttons:
-            print("Field-oriented driving disabled.")
-            field_oriented = False
+            print("Switching to Crab steering mode.")
+            steering_mode = CrabSteeringMode()
         elif Button.Y in pressed_buttons:
-            print("Drive base center and turn factor reset.")
-            drive_base_center = (0, 0)
-            turn_factor = 0.5
+            print("Switching to Swerve steering mode.")
+            steering_mode = SwerveSteeringMode()
 
-        x1, y1 = controller.joystick_left()
-        x2, y2 = controller.joystick_right()
+        if Button.A in pressed_buttons or Button.B in pressed_buttons or Button.X in pressed_buttons or Button.Y in pressed_buttons:
+            left_drive_motor.acceleration(steering_mode.acceleration())
+            right_drive_motor.acceleration(steering_mode.acceleration())
 
-        vx, vy = vector_rotate((x1, y1), -hub.imu.heading()) if field_oriented else (x1, y1)
-        omega = -x2 * turn_factor
-        hub.light.on(hub_color(vx, vy))
+        should_wait = steering_mode.should_wait()
+        drive_base_center = steering_mode.drive_base_center()
+        drive_base_velocity = steering_mode.drive_base_velocity(controller, heading=hub.imu.heading())
 
-        drive_base_velocity = (vx, vy, omega)
+        hub_color = steering_mode.hub_color(drive_base_velocity[0], drive_base_velocity[1])
+        hub.light.on(hub_color)
+
         module_states = kinematics.to_swerve_module_states(drive_base_velocity, drive_base_center)
 
         SwerveDriveKinematics.normalize_module_states(module_states)
-        SwerveModule.set_desired_states(swerve_modules, module_states, wait=False)
+        SwerveModule.set_desired_states(swerve_modules, module_states, wait=should_wait)
 
         wait(25)
 

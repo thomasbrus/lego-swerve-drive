@@ -25,6 +25,9 @@ class SwerveDriveMotor(Motor):
     def is_clockwise(self):
         return self.positive_direction == Direction.CLOCKWISE
 
+    def acceleration(self, new_acceleration):
+        self.control.limits(acceleration=new_acceleration)
+
 
 class SwerveModuleState:
     DEADZONE = 15
