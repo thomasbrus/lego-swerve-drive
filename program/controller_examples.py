@@ -18,7 +18,6 @@ def straight_line_example():
         joystick_left_readings=[
             pause_joystick,
             Reading((0, 100), 2500),
-            Reading((0, -100), 2500),
             finish_joystick,
         ],
         button_readings=exit_readings,
@@ -30,10 +29,9 @@ def sideways_example():
         joystick_left_readings=[
             pause_joystick,
             Reading((100, 0), 2500),
-            Reading((-100, 0), 2500),
             finish_joystick,
         ],
-        button_readings=exit_readings,
+        button_readings=[disable_field_oriented] + exit_readings,
     )
 
 
@@ -41,8 +39,10 @@ def zig_zag_example():
     return SimulatedController(
         joystick_left_readings=[
             pause_joystick,
-            Reading((100, 100), 1775),
-            Reading((-100, -100), 1775),
+            Reading((100, 100), 1000),
+            Reading((-100, 0), 1400),
+            Reading((100, 100), 1000),
+            Reading((-100, 0), 1400),
             finish_joystick,
         ],
         button_readings=exit_readings,

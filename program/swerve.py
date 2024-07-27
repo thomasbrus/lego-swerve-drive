@@ -81,24 +81,9 @@ class SwerveModule:
 
         for swerve_module, desired_state, optimized_state in optimized_modules:
             turning_speed = percentage_to_speed(desired_state.speed)
-
             # Driving speed is scaled down exponentially with the max angle difference of both modules.
-            optimized_state.speed *= cos(radians(max_angle_difference)) ** 10
-
-            # Account for rotation of wheel due to turning.
-            angle_diff = abs(desired_state.angle - optimized_state.angle)
-
-            if angle_diff > 1:
-                turn_speed_correction = swerve_module.turning_motor.speed()
-                turn_speed_correction = turn_speed_correction if swerve_module.drive_motor.is_clockwise() else -turn_speed_correction
-            else:
-                turn_speed_correction = 0
-
-            print(
-                f"Module {swerve_module.index}: {desired_state.speed:.2f} -> {optimized_state.speed:.2f} | turning speed correction: {turn_speed_correction:.2f} | angle difference: {angle_diff:.2f}"
-            )
-
-            swerve_module.drive_motor.run(percentage_to_speed(optimized_state.speed) - turn_speed_correction)
+            optimized_state.speed *= cos(radians(max_angle_difference)) ** 3
+            swerve_module.drive_motor.run(percentage_to_speed(optimized_state.speed))
             swerve_module.turning_motor.run_target(target_angle=optimized_state.angle, speed=turning_speed, wait=wait)
 
     def terminate(self):
