@@ -1,11 +1,12 @@
 # $ pybricksdev run ble two_wheel_hub.py --name "Technic Hub B" --no-wait
 from pybricks.hubs import TechnicHub
-from pybricks.parameters import Axis, Port, Direction, Button
+from pybricks.parameters import Axis, Port, Direction, Button, Color
 from pybricks.tools import wait
 from swerve import SwerveDriveMotor, SwerveTurningMotor, SwerveModule, SwerveDriveKinematics
 from pybricks.iodevices import XboxController
 from controller_simulation import SimulatedController, Reading
-from utils import vector_rotate
+from utils import vector_rotate, vector_angle, vector_distance
+import controller_examples
 
 hub = TechnicHub(front_side=-Axis.Y)
 hub.imu.reset_heading(hub.imu.heading())
@@ -26,23 +27,7 @@ kinematics = SwerveDriveKinematics(swerve_module_positions=[(-1, 0), (1, 0)])
 
 def get_controller(simulated=False):
     if simulated:
-        return SimulatedController(
-            joystick_left_readings=[
-                # Reading((0, 100), 2000),
-                Reading((0, 0), 1000),
-                # Reading((0, 0), 3000),
-                # Reading((0, 0), 1000),
-                Reading((0, 100), 1000),
-            ],
-            joystick_right_readings=[
-                # Reading((0, 0), 2000),
-                # Reading((0, 0), 1000),
-                Reading((100, 0), 1000),
-                Reading((0, 0), 1000),
-                # Reading((0, 0), 3000),
-            ],
-            button_readings=[Reading([], 3000), Reading([Button.B], 0)],
-        )
+        return controller_examples.straight_line_example()
     else:
         return XboxController()
 
@@ -50,16 +35,52 @@ def get_controller(simulated=False):
 controller = get_controller(simulated=False)
 
 try:
-    while Button.B not in controller.buttons.pressed():
+
+    def shift_center(center, dx, dy):
+        return center[0] + dx, center[1] + dy
+
+    def hub_color(vx, vy):
+        hue = vector_angle((vx, vy))
+        value = min(100, vector_distance((vx, vy)))
+        return Color(h=hue, s=100, v=value)
+
+    drive_base_center = (0, 0)
+    turn_factor = 0.5
+    field_oriented = True
+
+    while True:
+        pressed_buttons = controller.buttons.pressed()
+
+        if Button.LEFT in pressed_buttons:
+            drive_base_center = shift_center(drive_base_center, -0.5, 0)
+        elif Button.RIGHT in pressed_buttons:
+            drive_base_center = shift_center(drive_base_center, 0.5, 0)
+        elif Button.UP in pressed_buttons:
+            drive_base_center = shift_center(drive_base_center, 0, 0.5)
+        elif Button.DOWN in pressed_buttons:
+            drive_base_center = shift_center(drive_base_center, 0, -0.5)
+        elif Button.LB in pressed_buttons:
+            turn_factor = max(0.2, turn_factor - 0.1)
+        elif Button.RB in pressed_buttons:
+            turn_factor = min(1, turn_factor + 0.1)
+        elif Button.A in pressed_buttons:
+            field_oriented = True
+        elif Button.B in pressed_buttons:
+            break
+        elif Button.X in pressed_buttons:
+            field_oriented = False
+        elif Button.Y in pressed_buttons:
+            drive_base_center = (0, 0)
+            turn_factor = 0.5
+
         x1, y1 = controller.joystick_left()
         x2, y2 = controller.joystick_right()
 
-        angle = -hub.imu.heading() + 360 % 360
-        x1, y1 = vector_rotate((x1, y1), -angle)
+        vx, vy = vector_rotate((x1, y1), -hub.imu.heading()) if field_oriented else (x1, y1)
+        omega = -x2 * turn_factor
+        hub.light.on(hub_color(vx, vy))
 
-        drive_base_center = (0, 0)
-        turn_factor = 0.5
-        drive_base_velocity = (x1, y1, -x2 * turn_factor)
+        drive_base_velocity = (vx, vy, omega)
         module_states = kinematics.to_swerve_module_states(drive_base_velocity, drive_base_center)
 
         SwerveDriveKinematics.normalize_module_states(module_states)

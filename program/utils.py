@@ -12,8 +12,9 @@ def vector_angle(vector):
 
 
 def vector_rotate(vector, angle):
-    x = vector[0] * cos(radians(angle)) - vector[1] * sin(radians(angle))
-    y = vector[0] * sin(radians(angle)) + vector[1] * cos(radians(angle))
+    angle = radians(-angle + 360 % 360)
+    x = vector[0] * cos(angle) - vector[1] * sin(angle)
+    y = vector[0] * sin(angle) + vector[1] * cos(angle)
     return x, y
 
 
