@@ -21,13 +21,20 @@ class ReadingsTimeline:
         return not self.readings
 
 
+class Reading:
+    def __init__(self, value, duration):
+        self.value = value
+        self.duration = duration
+
+
 class SimulatedController:
+
     def __init__(
         self,
-        joystick_left_readings=[],
-        joystick_right_readings=[],
-        trigger_readings=[],
-        button_readings=[],
+        joystick_left_readings=[Reading([0, 0], 0)],
+        joystick_right_readings=[Reading([0, 0], 0)],
+        trigger_readings=[Reading([0, 0], 0)],
+        button_readings=[Reading([], 0)],
     ):
         self.joystick_left_readings_timeline = ReadingsTimeline(joystick_left_readings)
         self.joystick_right_readings_timeline = ReadingsTimeline(joystick_right_readings)
@@ -60,9 +67,3 @@ class SimulatedKeypad:
         if self.button_readings_timeline.is_empty():
             raise IndexError("No readings available for buttons.")
         return self.button_readings_timeline.current()
-
-
-class Reading:
-    def __init__(self, value, duration):
-        self.value = value
-        self.duration = duration

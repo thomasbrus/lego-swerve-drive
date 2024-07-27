@@ -27,12 +27,12 @@ kinematics = SwerveDriveKinematics(swerve_module_positions=[(-1, 0), (1, 0)])
 
 def get_controller(simulated=False):
     if simulated:
-        return controller_examples.straight_line_example()
+        return controller_examples.sideways_example()
     else:
         return XboxController()
 
 
-controller = get_controller(simulated=False)
+controller = get_controller(simulated=True)
 
 try:
 
@@ -40,7 +40,8 @@ try:
         return center[0] + dx, center[1] + dy
 
     def hub_color(vx, vy):
-        hue = vector_angle((vx, vy))
+        green_hue = 120
+        hue = vector_angle(vector_rotate((vx, vy), green_hue))
         value = min(100, vector_distance((vx, vy)))
         return Color(h=hue, s=100, v=value)
 
@@ -52,24 +53,34 @@ try:
         pressed_buttons = controller.buttons.pressed()
 
         if Button.LEFT in pressed_buttons:
+            print("Drive base center shifted left.")
             drive_base_center = shift_center(drive_base_center, -0.5, 0)
         elif Button.RIGHT in pressed_buttons:
+            print("Drive base center shifted right.")
             drive_base_center = shift_center(drive_base_center, 0.5, 0)
         elif Button.UP in pressed_buttons:
+            print("Drive base center shifted up.")
             drive_base_center = shift_center(drive_base_center, 0, 0.5)
         elif Button.DOWN in pressed_buttons:
+            print("Drive base center shifted down.")
             drive_base_center = shift_center(drive_base_center, 0, -0.5)
         elif Button.LB in pressed_buttons:
+            print("Turn factor decreased.")
             turn_factor = max(0.2, turn_factor - 0.1)
         elif Button.RB in pressed_buttons:
+            print("Turn factor increased.")
             turn_factor = min(1, turn_factor + 0.1)
         elif Button.A in pressed_buttons:
+            print("Field-oriented driving enabled.")
             field_oriented = True
         elif Button.B in pressed_buttons:
+            print("Exiting program.")
             break
         elif Button.X in pressed_buttons:
+            print("Field-oriented driving disabled.")
             field_oriented = False
         elif Button.Y in pressed_buttons:
+            print("Drive base center and turn factor reset.")
             drive_base_center = (0, 0)
             turn_factor = 0.5
 
