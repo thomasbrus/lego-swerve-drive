@@ -27,7 +27,7 @@ kinematics = SwerveDriveKinematics(swerve_module_positions=[(-1, 0), (1, 0)])
 
 def get_controller(simulated=False):
     if simulated:
-        return controller_examples.sideways_example()
+        return controller_examples.zig_zag_example()
     else:
         return XboxController()
 
