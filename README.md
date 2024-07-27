@@ -1,6 +1,6 @@
 # LEGO Swerve Drive
 
-Two wheeled swerve drive, with Ackermann, tank, crab and swerve steering. In the video below the robot keeps its orienation relative to the field using the builtin gyroscope. An unique feature of a swerve drive is that it can also rotate it self while moving sideways. At the end it switches to tank steering, with an increasingly smaller turn radius.
+Two wheeled swerve drive, with Ackermann, tank, swerve steering. In the video below the robot keeps its orienation relative to the field using the builtin gyroscope. An unique feature of a swerve drive is that it can also rotate itself while moving sideways. At the end it switches to tank steering, with an increasingly smaller turn radius.
 
 https://github.com/user-attachments/assets/13078f21-9577-4978-b279-8b0976e34bdb
 
