@@ -1,6 +1,5 @@
 from controller_simulation import SimulatedController, Reading
 from pybricks.parameters import Button
-from swerve import SwerveModuleState
 
 pause_joystick = Reading((0, 0), 1000)
 finish_joystick = Reading((0, 0), 0)

@@ -1,4 +1,4 @@
-# $ pybricksdev run ble two_wheel_hub.py --name "Technic Hub B" --no-wait
+# $ pybricksdev run ble main.py --name "Technic Hub B" --no-wait
 from pybricks.hubs import TechnicHub
 from pybricks.parameters import Axis, Port, Direction, Button
 from pybricks.tools import wait
