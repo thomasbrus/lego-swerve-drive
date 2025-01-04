@@ -4,7 +4,7 @@ Two wheeled swerve drive, with Ackermann, tank, swerve steering. In the video be
 
 https://github.com/user-attachments/assets/13078f21-9577-4978-b279-8b0976e34bdb
 
-Also built a four wheel swerve drive, the code is in the four-wheel-swerve-drive branch.
+Also built a four wheel swerve drive, the code is in the [four-wheel-swerve-drive](https://github.com/thomasbrus/lego-swerve-drive/tree/four-wheel-swerve-drive) branch.
 
 https://github.com/user-attachments/assets/10fc3e3f-b26e-4257-bff9-15ef619aaf38
 
