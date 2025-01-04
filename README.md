@@ -1,5 +1,7 @@
 # LEGO Swerve Drive
 
+See Pybricks Discussion: https://github.com/orgs/pybricks/discussions/1729.
+
 Two wheeled swerve drive, with Ackermann, tank, swerve steering. In the video below the robot keeps its orienation relative to the field using the builtin gyroscope. An unique feature of a swerve drive is that it can also rotate itself while moving sideways. At the end it switches to tank steering, with an increasingly smaller turn radius.
 
 https://github.com/user-attachments/assets/13078f21-9577-4978-b279-8b0976e34bdb
